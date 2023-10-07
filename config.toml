@@ -1,0 +1,10 @@
+[Configuration]
+HTTPProxyURL = ''
+GeocachingAPIURL = 'https://www.geocaching.com'
+
+[SearchTerms]
+Latitude = -27.48925
+Longitude = 153.02195
+RadiusMeters = 20000
+AreaName = 'Brisbane'
+IgnorePremium = false
