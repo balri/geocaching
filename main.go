@@ -56,7 +56,7 @@ func startServer(router http.Handler) {
 		Handler:           router,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
-	log.Info("listening for HTTP on: %s", server.Addr)
+	log.Printf("listening for HTTP on: %s", server.Addr)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal("ListenAndServeError", err)
 	}

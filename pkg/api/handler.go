@@ -5,11 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"geocaching/pkg/cacheodon"
 )
 
 func getIndex(w http.ResponseWriter, r *http.Request) {
+	radius := r.URL.Query().Get("radius")
 	config, err := cacheodon.NewDatastore("config.toml")
 	if err != nil {
 		log.Fatal(err)
@@ -27,12 +29,20 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 		os.Exit(1)
 	}
 
-	caches, err := api.Search(config.Store.SearchTerms)
+	searchTerms := config.Store.SearchTerms
+	rad, err := strconv.Atoi(radius)
+	if err == nil {
+		log.Printf("Using radius %d", rad)
+		searchTerms.RadiusMeters = rad
+	}
+
+	caches, err := api.Search(searchTerms)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
+	log.Printf("Found %d caches", len(caches))
 	payload, err := json.Marshal(caches)
 	if err != nil {
 		log.Fatal(err)

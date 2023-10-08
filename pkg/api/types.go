@@ -103,36 +103,36 @@ var CacheAttributes = map[int]string{
 // Difficulty and terrain are comma separated list
 // Dates in format YYYY-MM-DD
 // Start and end date go together, all other dates are mutually exclusive
-var QueryParams struct{
-	CacheTypes              []int    `json:"ct",omitempty`
-	CacheSizes              []int    `json:"cs",omitempty`
+var QueryParams struct {
+	CacheTypes              []int    `json:"ct,omitempty"`
+	CacheSizes              []int    `json:"cs,omitempty"`
 	SearchTerm              string   `json:"st"`
 	OperationType           string   `json:"ot"`
 	Radius                  int      `json:"r"`
-	CacheName               string   `json:"cn",omitempty`
-	HideFound               bool     `json:"hf",omitempty`
-	NotFoundBy              string   `json:"nfb",omitempty`
-	HideOwned               bool     `json:"ho",omitempty`
-	FoundBy                 string   `json:"fb",omitempty`
-	Matrix                  []string `json:"m",omitempty`
+	CacheName               string   `json:"cn,omitempty"`
+	HideFound               bool     `json:"hf,omitempty"`
+	NotFoundBy              string   `json:"nfb,omitempty"`
+	HideOwned               bool     `json:"ho,omitempty"`
+	FoundBy                 string   `json:"fb,omitempty"`
+	Matrix                  []string `json:"m,omitempty"`
 	SortAsc                 bool     `json:"asc"`
 	Sort                    string   `json:"sort"`
-	ShowDisabled            bool     `json:"sd",omitempty`
-	PremiumOnly             bool     `json:"sp",omitempty`
-	ShowCorrectedCoordsOnly bool     `json:"cc",omitempty`
-	ShowCacheNotesOnly      bool     `json:"pn",omitempty`
-	FavouritePoints         int      `json:"fp",omitempty`
-	Difficulty              []string `json:"d",omitempty`
-	Terrain                 []string `json:"t",omitempty`
-	FoundBeforeDate         string   `json:"fbd",omitempty`
-	FoundStartDate          string   `json:"fsd",omitempty`
-	FoundEndDate            string   `json:"fed",omitempty`
-	FoundOnDate             string   `json:"fod",omitempty`
-	FoundAfterDate          string   `json:"fad",omitempty`
-	PlacedBeforeDate        string   `json:"pbd",omitempty`
-	PlacedStartDate         string   `json:"psd",omitempty`
-	PlacedEndDate           string   `json:"ped",omitempty`
-	PlacedOnDate            string   `json:"pod",omitempty`
-	PlacedAfterDate         string   `json:"pad",omitempty`
-	Attributes              []int    `json:"att",omitempty`
+	ShowDisabled            bool     `json:"sd,omitempty"`
+	PremiumOnly             bool     `json:"sp,omitempty"`
+	ShowCorrectedCoordsOnly bool     `json:"cc,omitempty"`
+	ShowCacheNotesOnly      bool     `json:"pn,omitempty"`
+	FavouritePoints         int      `json:"fp,omitempty"`
+	Difficulty              []string `json:"d,omitempty"`
+	Terrain                 []string `json:"t,omitempty"`
+	FoundBeforeDate         string   `json:"fbd,omitempty"`
+	FoundStartDate          string   `json:"fsd,omitempty"`
+	FoundEndDate            string   `json:"fed,omitempty"`
+	FoundOnDate             string   `json:"fod,omitempty"`
+	FoundAfterDate          string   `json:"fad,omitempty"`
+	PlacedBeforeDate        string   `json:"pbd,omitempty"`
+	PlacedStartDate         string   `json:"psd,omitempty"`
+	PlacedEndDate           string   `json:"ped,omitempty"`
+	PlacedOnDate            string   `json:"pod,omitempty"`
+	PlacedAfterDate         string   `json:"pad,omitempty"`
+	Attributes              []int    `json:"att,omitempty"`
 }
