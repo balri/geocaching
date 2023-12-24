@@ -15,6 +15,7 @@ func GetRouter() http.Handler {
 func applyRoutes(r chi.Router) chi.Router {
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", getIndex)
+		r.Get("/unsolved", getUnsolved)
 	})
 
 	return r

@@ -1,18 +1,20 @@
 package api
 
-var CacheTypes = map[int]string{
-	2:    "Traditional",
-	3:    "Multi",
-	4:    "Virtual",
-	5:    "Letterbox Hybrid",
-	6:    "Event",
-	8:    "Unknown",
-	11:   "Webcam",
-	13:   "CITO",
-	137:  "Earthcache",
-	453:  "Mega",
-	1858: "Wherigo",
-	7005: "Giga",
+// Remaining event types: 3653,3774,4738
+var CacheTypes = map[string]int{
+	"Traditional":            2,
+	"Multi":                  3,
+	"Virtual":                4,
+	"Letterbox":              5,
+	"Event":                  6,
+	"Unknown":                8,
+	"Webcam":                 11,
+	"CITO":                   13,
+	"Earthcache":             137,
+	"Mega":                   453,
+	"Wherigo":                1858,
+	"Giga":                   7005,
+	"GPS Adventures Exhibit": 1304,
 }
 
 var CacheSizes = map[int]string{
@@ -103,7 +105,7 @@ var CacheAttributes = map[int]string{
 // Difficulty and terrain are comma separated list
 // Dates in format YYYY-MM-DD
 // Start and end date go together, all other dates are mutually exclusive
-var QueryParams struct {
+type QueryParams struct {
 	CacheTypes              []int    `json:"ct,omitempty"`
 	CacheSizes              []int    `json:"cs,omitempty"`
 	SearchTerm              string   `json:"st"`
