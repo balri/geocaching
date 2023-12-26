@@ -6,12 +6,44 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-type searchTerms struct {
+type SearchTerms struct {
 	Latitude      float32
 	Longitude     float32
 	RadiusMeters  int
 	AreaName      string
 	IgnorePremium bool
+	// Following added by me
+	CacheTypes              []int    `json:"ct,omitempty"`
+	CacheSizes              []int    `json:"cs,omitempty"`
+	SearchTerm              string   `json:"st"`
+	OperationType           string   `json:"ot"`
+	Radius                  int      `json:"r"`
+	CacheName               string   `json:"cn,omitempty"`
+	HideFound               bool     `json:"hf,omitempty"`
+	NotFoundBy              string   `json:"nfb,omitempty"`
+	HideOwned               bool     `json:"ho,omitempty"`
+	FoundBy                 string   `json:"fb,omitempty"`
+	Matrix                  []string `json:"m,omitempty"`
+	SortAsc                 bool     `json:"asc"`
+	Sort                    string   `json:"sort"`
+	ShowDisabled            string   `json:"sd,omitempty"`
+	PremiumOnly             bool     `json:"sp,omitempty"`
+	ShowCorrectedCoordsOnly string   `json:"cc,omitempty"`
+	ShowCacheNotesOnly      bool     `json:"pn,omitempty"`
+	FavouritePoints         int      `json:"fp,omitempty"`
+	Difficulty              []string `json:"d,omitempty"`
+	Terrain                 []string `json:"t,omitempty"`
+	FoundBeforeDate         string   `json:"fbd,omitempty"`
+	FoundStartDate          string   `json:"fsd,omitempty"`
+	FoundEndDate            string   `json:"fed,omitempty"`
+	FoundOnDate             string   `json:"fod,omitempty"`
+	FoundAfterDate          string   `json:"fad,omitempty"`
+	PlacedBeforeDate        string   `json:"pbd,omitempty"`
+	PlacedStartDate         string   `json:"psd,omitempty"`
+	PlacedEndDate           string   `json:"ped,omitempty"`
+	PlacedOnDate            string   `json:"pod,omitempty"`
+	PlacedAfterDate         string   `json:"pad,omitempty"`
+	Attributes              []int    `json:"att,omitempty"`
 }
 
 type APIConfig struct {
@@ -23,7 +55,7 @@ type APIConfig struct {
 
 type configStore struct {
 	Configuration APIConfig
-	SearchTerms   searchTerms
+	SearchTerms   SearchTerms
 	DBFilename    string
 }
 

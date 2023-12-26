@@ -9,7 +9,7 @@ import (
 
 type GeocachingAPIer interface {
 	Auth(clientID, clientSecret string) error
-	Search(st searchTerms) ([]Geocache, error)
+	Search(st SearchTerms) ([]Geocache, error)
 	GetLogs(geocache *Geocache) ([]GeocacheLog, error)
 }
 

@@ -190,7 +190,7 @@ func (m *mockGeocachingApi) Auth(clientID, clientSecret string) error {
 	return nil
 }
 
-func (m *mockGeocachingApi) Search(st searchTerms) ([]Geocache, error) {
+func (m *mockGeocachingApi) Search(st SearchTerms) ([]Geocache, error) {
 	return m.caches, nil
 }
 
@@ -208,7 +208,7 @@ func TestUpdate(t *testing.T) {
 	var err error
 	tempdir := t.TempDir()
 	conf := configStore{
-		SearchTerms: searchTerms{
+		SearchTerms: SearchTerms{
 			AreaName: "Blerpville",
 		},
 		DBFilename: tempdir + "/test.sqlite3",

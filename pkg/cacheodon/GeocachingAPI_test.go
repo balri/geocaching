@@ -252,7 +252,7 @@ func TestSearchQuery(t *testing.T) {
 		GeocachingAPIURL: server.URL,
 		UnThrottle:       true,
 	}
-	st := searchTerms{
+	st := SearchTerms{
 		Latitude:      searchLat,
 		Longitude:     searchLon,
 		RadiusMeters:  1234,
