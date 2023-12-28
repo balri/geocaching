@@ -11,7 +11,7 @@ import (
 	"geocaching/pkg/cacheodon"
 )
 
-func getSearchTerms(rad int) cacheodon.SearchTerms {
+func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 	config, err := cacheodon.NewDatastore("config.toml")
 	if err != nil {
 		log.Fatal(err)
@@ -19,21 +19,39 @@ func getSearchTerms(rad int) cacheodon.SearchTerms {
 	}
 
 	params := config.Store.SearchTerms
+	params.IgnorePremium = false
+	params.ShowDisabled = "0"
+	params.SortAsc = true
+	params.Sort = "distance"
+	params.OperationType = "query"
+	params.HideOwned = "1"
+	params.NotFoundBy = os.Getenv("GEOCACHING_CLIENT_ID")
+
+	params.RadiusMeters = 20000
 	if rad > 0 {
 		log.Printf("Using radius %d", rad)
 		params.RadiusMeters = rad
 	}
 
+	// By default get all standard types minus events
 	params.CacheTypes = []int{
-		CacheTypes["Traditional"],
-		CacheTypes["Multi"],
-		CacheTypes["Virtual"],
-		CacheTypes["Letterbox"],
-		CacheTypes["Unknown"],
-		CacheTypes["Webcam"],
-		CacheTypes["Earthcache"],
-		CacheTypes["Wherigo"],
+		cacheTypes["Traditional"],
+		cacheTypes["Multi"],
+		cacheTypes["Virtual"],
+		cacheTypes["Letterbox"],
+		cacheTypes["Unknown"],
+		cacheTypes["Webcam"],
+		cacheTypes["Earthcache"],
+		cacheTypes["Wherigo"],
 	}
+
+	return params
+}
+
+func getUnsolvedSearchTerms(rad int) cacheodon.SearchTerms {
+	params := getDefaultSearchTerms(rad)
+	params.CacheTypes = []int{cacheTypes["Unknown"]}
+	params.ShowCorrectedCoordsOnly = "0"
 
 	return params
 }
@@ -61,11 +79,7 @@ func getCaches(searchTerms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) 
 
 func getIndex(w http.ResponseWriter, r *http.Request) {
 	rad, _ := strconv.Atoi(r.URL.Query().Get("radius"))
-	params := getSearchTerms(rad)
-	if rad > 0 {
-		log.Printf("Using radius %d", rad)
-		params.RadiusMeters = rad
-	}
+	params := getDefaultSearchTerms(rad)
 	caches, err := getCaches(params)
 	if err != nil {
 		log.Fatal(err)
@@ -82,22 +96,21 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	sendResponse(w, 200, []byte(payload))
 }
 
-func filterCaches(cache cacheodon.Geocache) bool {
-	if strings.Contains(cache.Name, "Bonus") {
+func filterUnsolved(cache cacheodon.Geocache) bool {
+	if strings.Contains(strings.ToLower(cache.Name), "bonus") {
 		return false
 	}
+
+	excludedAttributes := map[int]bool{
+		cacheAttributes["Challenge Cache"]: true,
+		cacheAttributes["Field Puzzle"]:    true,
+		cacheAttributes["Bonus cache"]:     true,
+		// Not sure about this but it seems logical right?
+		cacheAttributes["Wireless Beacon"]: true,
+	}
+
 	for _, att := range cache.Attributes {
-		if att.ID == getAttributeID("Challenge Cache") && att.IsApplicable {
-			return false
-		}
-		if att.ID == getAttributeID("Field Puzzle") && att.IsApplicable {
-			return false
-		}
-		if att.ID == getAttributeID("Bonus cache") && att.IsApplicable {
-			return false
-		}
-		if att.ID == getAttributeID("Wireless Beacon") && att.IsApplicable {
-			// Not sure about this but it seems logical right?
+		if _, hasAttr := excludedAttributes[att.ID]; hasAttr && att.IsApplicable {
 			return false
 		}
 	}
@@ -106,11 +119,8 @@ func filterCaches(cache cacheodon.Geocache) bool {
 }
 
 func getUnsolved(w http.ResponseWriter, r *http.Request) {
-	// TODO: only get mysteries without corrected coords
 	rad, _ := strconv.Atoi(r.URL.Query().Get("radius"))
-	params := getSearchTerms(rad)
-	params.CacheTypes = []int{CacheTypes["Unknown"]}
-	params.ShowCorrectedCoordsOnly = "0"
+	params := getUnsolvedSearchTerms(rad)
 	caches, err := getCaches(params)
 	if err != nil {
 		log.Fatal(err)
@@ -119,7 +129,7 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 
 	var filteredCaches []cacheodon.Geocache
 	for _, cache := range caches {
-		if filterCaches(cache) {
+		if filterUnsolved(cache) {
 			filteredCaches = append(filteredCaches, cache)
 		}
 	}
@@ -132,16 +142,6 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendResponse(w, 200, []byte(payload))
-}
-
-func getAttributeID(searchName string) int {
-	for idx, name := range CacheAttributes {
-		if name == searchName {
-			return idx
-		}
-	}
-
-	return -1
 }
 
 func sendResponse(w http.ResponseWriter, status int, body []byte) {

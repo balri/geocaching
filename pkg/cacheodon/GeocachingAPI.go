@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -246,6 +245,27 @@ type GeocacheLogSearchResponse struct {
 func convertSearchTermsToQuery(req *http.Request, st SearchTerms) url.Values {
 	query := req.URL.Query()
 
+	sortAsc := "true"
+	if !st.SortAsc {
+		sortAsc = "false"
+	}
+	query.Add("asc", sortAsc)
+
+	query.Add("sort", st.Sort)
+	query.Add("origin", fmt.Sprintf("%f,%f", st.Latitude, st.Longitude))
+	query.Add("rad", fmt.Sprint(st.RadiusMeters))
+	query.Add("ot", st.OperationType)
+
+	// Exclude caches found by me
+	if st.NotFoundBy != "" {
+		query.Add("nfb", st.NotFoundBy)
+	}
+
+	// Exclude my caches
+	if st.HideOwned != "" {
+		query.Add("ho", st.HideOwned)
+	}
+
 	if len(st.CacheTypes) > 0 {
 		cacheTypes := ""
 		for _, ct := range st.CacheTypes {
@@ -254,7 +274,6 @@ func convertSearchTermsToQuery(req *http.Request, st SearchTerms) url.Values {
 			}
 			cacheTypes = cacheTypes + strconv.Itoa(ct)
 		}
-		log.Println(cacheTypes)
 		query.Add("ct", cacheTypes)
 	}
 
@@ -282,27 +301,8 @@ func (g *GeocachingAPI) searchQuery(st SearchTerms, skip, take int) ([]Geocache,
 	query := convertSearchTermsToQuery(req, st)
 	query.Add("skip", fmt.Sprint(skip))
 	query.Add("take", fmt.Sprint(take))
-	query.Add("asc", "true")
-	// Note: Sorting by anything other than distance is a "premium feature." This means we
-	// have to query all pages of results and sort them ourselves.
-	query.Add("sort", "distance")
-	// query.Add("properties", "callernote")
-	query.Add("origin", fmt.Sprintf("%f,%f", st.Latitude, st.Longitude))
-	query.Add("rad", fmt.Sprint(st.RadiusMeters))
-	// query.Add("oid", "3356")
-	// query.Add("ot", "city")
-	query.Add("ot", "query")
 
-	// Exclude caches found by me
-	query.Add("nfb", os.Getenv("GEOCACHING_CLIENT_ID"))
-
-	// Exclude all event types
-	// query.Add("ct","2,3,8,137,5,11,1858,4")
-
-	// Exclude my caches
-	query.Add("ho", "1")
 	req.URL.RawQuery = query.Encode()
-	log.Println(req.URL.RawQuery)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Accept-Language", "en-GB,en;q=0.5")

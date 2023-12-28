@@ -1,7 +1,7 @@
 package api
 
 // Remaining event types: 3653,3774,4738
-var CacheTypes = map[string]int{
+var cacheTypes = map[string]int{
 	"Traditional":            2,
 	"Multi":                  3,
 	"Virtual":                4,
@@ -12,129 +12,88 @@ var CacheTypes = map[string]int{
 	"CITO":                   13,
 	"Earthcache":             137,
 	"Mega":                   453,
+	"GPS Adventures Exhibit": 1304,
 	"Wherigo":                1858,
 	"Giga":                   7005,
-	"GPS Adventures Exhibit": 1304,
 }
 
-var CacheSizes = map[int]string{
-	2: "Micro",
-	3: "Regular",
-	4: "Large",
-	6: "Other",
-	8: "Small",
+var cacheSizes = map[string]int{
+	"Micro":   2,
+	"Regular": 3,
+	"Large":   4,
+	"Other":   6,
+	"Small":   8,
 }
 
-var CacheAttributes = map[int]string{
-	1:  "Dogs",
-	2:  "Access or parking fee",
-	3:  "Climbing gear",
-	4:  "Boat",
-	5:  "Scuba gear",
-	6:  "Recommended for kids",
-	7:  "Takes less than an hour",
-	8:  "Scenic view",
-	9:  "Significant hike",
-	10: "Difficult climbing",
-	11: "May require wading",
-	12: "May require swimming",
-	13: "Available at all times",
-	14: "Recommended at night",
-	15: "Available during winter",
-	16: "Cacti nearby", //retired, https://www.geocaching.com/geocache/GC684
-	17: "Poison plants",
-	18: "Dangerous Animals",
-	19: "Ticks",
-	20: "Abandoned mines",
-	21: "Cliff / falling rocks",
-	22: "Hunting",
-	23: "Dangerous area",
-	24: "Wheelchair accessible",
-	25: "Parking available",
-	26: "Public transportation",
-	27: "Drinking water nearby",
-	28: "Public restrooms nearby",
-	29: "Telephone nearby",
-	30: "Picnic tables nearby",
-	31: "Camping available",
-	32: "Bicycles",
-	33: "Motorcycles",
-	34: "Quads",
-	35: "Off-road vehicles",
-	36: "Snowmobiles",
-	37: "Horses",
-	38: "Campfires",
-	39: "Thorns",
-	40: "Stealth required",
-	41: "Stroller accessible",
-	42: "Needs maintenance",
-	43: "Watch for livestock",
-	44: "Flashlight required",
-	46: "Truck Driver/RV",
-	47: "Field Puzzle",
-	48: "UV Light Required",
-	49: "Snowshoes",
-	50: "Cross Country Skis",
-	51: "Special Tool Required",
-	52: "Night Cache",
-	53: "Park and Grab",
-	54: "Abandoned Structure",
-	55: "Short hike (less than 1km)",
-	56: "Medium hike (1km-10km)",
-	57: "Long Hike (+10km)",
-	58: "Fuel Nearby",
-	59: "Food Nearby",
-	60: "Wireless Beacon",
-	61: "Partnership cache",
-	62: "Seasonal Access",
-	63: "Tourist Friendly",
-	64: "Tree Climbing",
-	65: "Front Yard (Private Residence)",
-	66: "Teamwork Required",
-	67: "GeoTour",
-	69: "Bonus cache",
-	70: "Power trail",
-	71: "Challenge Cache",
-	72: "Geocaching.com solution checker",
-}
-
-// Most options are omitted if empty
-// Bool values are 1, 0 or omitted to show both
-// Found by and not found by use multiple keys for multiple values
-// Matrix is comma separated list of 'd-t'
-// Difficulty and terrain are comma separated list
-// Dates in format YYYY-MM-DD
-// Start and end date go together, all other dates are mutually exclusive
-type QueryParams struct {
-	CacheTypes              []int    `json:"ct,omitempty"`
-	CacheSizes              []int    `json:"cs,omitempty"`
-	SearchTerm              string   `json:"st"`
-	OperationType           string   `json:"ot"`
-	Radius                  int      `json:"r"`
-	CacheName               string   `json:"cn,omitempty"`
-	HideFound               bool     `json:"hf,omitempty"`
-	NotFoundBy              string   `json:"nfb,omitempty"`
-	HideOwned               bool     `json:"ho,omitempty"`
-	FoundBy                 string   `json:"fb,omitempty"`
-	Matrix                  []string `json:"m,omitempty"`
-	SortAsc                 bool     `json:"asc"`
-	Sort                    string   `json:"sort"`
-	ShowDisabled            bool     `json:"sd,omitempty"`
-	PremiumOnly             bool     `json:"sp,omitempty"`
-	ShowCorrectedCoordsOnly bool     `json:"cc,omitempty"`
-	ShowCacheNotesOnly      bool     `json:"pn,omitempty"`
-	FavouritePoints         int      `json:"fp,omitempty"`
-	Difficulty              []string `json:"d,omitempty"`
-	Terrain                 []string `json:"t,omitempty"`
-	FoundBeforeDate         string   `json:"fbd,omitempty"`
-	FoundStartDate          string   `json:"fsd,omitempty"`
-	FoundEndDate            string   `json:"fed,omitempty"`
-	FoundOnDate             string   `json:"fod,omitempty"`
-	FoundAfterDate          string   `json:"fad,omitempty"`
-	PlacedBeforeDate        string   `json:"pbd,omitempty"`
-	PlacedStartDate         string   `json:"psd,omitempty"`
-	PlacedEndDate           string   `json:"ped,omitempty"`
-	PlacedOnDate            string   `json:"pod,omitempty"`
-	PlacedAfterDate         string   `json:"pad,omitempty"`
-	Attributes              []int    `json:"att,omitempty"`
+var cacheAttributes = map[string]int{
+	"Dogs":                            1,
+	"Access or parking fee":           2,
+	"Climbing gear":                   3,
+	"Boat":                            4,
+	"Scuba gear":                      5,
+	"Recommended for kids":            6,
+	"Takes less than an hour":         7,
+	"Scenic view":                     8,
+	"Significant hike":                9,
+	"Difficult climbing":              10,
+	"May require wading":              11,
+	"May require swimming":            12,
+	"Available at all times":          13,
+	"Recommended at night":            14,
+	"Available during winter":         15,
+	"Cacti nearby":                    16, //retired, https://www.geocaching.com/geocache/GC684
+	"Poison plants":                   17,
+	"Dangerous Animals":               18,
+	"Ticks":                           19,
+	"Abandoned mines":                 20,
+	"Cliff / falling rocks":           21,
+	"Hunting":                         22,
+	"Dangerous area":                  23,
+	"Wheelchair accessible":           24,
+	"Parking available":               25,
+	"Public transportation":           26,
+	"Drinking water nearby":           27,
+	"Public restrooms nearby":         28,
+	"Telephone nearby":                29,
+	"Picnic tables nearby":            30,
+	"Camping available":               31,
+	"Bicycles":                        32,
+	"Motorcycles":                     33,
+	"Quads":                           34,
+	"Off-road vehicles":               35,
+	"Snowmobiles":                     36,
+	"Horses":                          37,
+	"Campfires":                       38,
+	"Thorns":                          39,
+	"Stealth required":                40,
+	"Stroller accessible":             41,
+	"Needs maintenance":               42,
+	"Watch for livestock":             43,
+	"Flashlight required":             44,
+	"Truck Driver/RV":                 46,
+	"Field Puzzle":                    47,
+	"UV Light Required":               48,
+	"Snowshoes":                       49,
+	"Cross Country Skis":              50,
+	"Special Tool Required":           51,
+	"Night Cache":                     52,
+	"Park and Grab":                   53,
+	"Abandoned Structure":             54,
+	"Short hike (less than 1km)":      55,
+	"Medium hike (1km-10km)":          56,
+	"Long Hike (+10km)":               57,
+	"Fuel Nearby":                     58,
+	"Food Nearby":                     59,
+	"Wireless Beacon":                 60,
+	"Partnership cache":               61,
+	"Seasonal Access":                 62,
+	"Tourist Friendly":                63,
+	"Tree Climbing":                   64,
+	"Front Yard (Private Residence)":  65,
+	"Teamwork Required":               66,
+	"GeoTour":                         67,
+	"Bonus cache":                     69,
+	"Power trail":                     70,
+	"Challenge Cache":                 71,
+	"Geocaching.com solution checker": 72,
 }

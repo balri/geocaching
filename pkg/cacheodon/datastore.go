@@ -6,6 +6,13 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// Most options are omitted if empty
+// Bool values are 1, 0 or omitted to show both (as string)
+// Found by and not found by use multiple keys for multiple values
+// Matrix is comma separated list of 'd-t'
+// Difficulty and terrain are comma separated list
+// Dates in format YYYY-MM-DD
+// Start and end date go together, all other dates are mutually exclusive
 type SearchTerms struct {
 	Latitude      float32
 	Longitude     float32
@@ -21,7 +28,7 @@ type SearchTerms struct {
 	CacheName               string   `json:"cn,omitempty"`
 	HideFound               bool     `json:"hf,omitempty"`
 	NotFoundBy              string   `json:"nfb,omitempty"`
-	HideOwned               bool     `json:"ho,omitempty"`
+	HideOwned               string   `json:"ho,omitempty"`
 	FoundBy                 string   `json:"fb,omitempty"`
 	Matrix                  []string `json:"m,omitempty"`
 	SortAsc                 bool     `json:"asc"`
