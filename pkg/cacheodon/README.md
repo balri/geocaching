@@ -1,1 +1,0 @@
-This package copied and adapted from https://github.com/tjhowse/cacheodon
