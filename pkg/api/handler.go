@@ -11,19 +11,24 @@ import (
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
 )
 
+// BoolPtr returns a pointer to the given bool value.
+func BoolPtr(b bool) *bool {
+	return &b
+}
+
 func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 	params := cacheodon.SearchTerms{
 		Latitude:      -27.4705,
 		Longitude:     153.0260,
-		RadiusMeters:  20000,
+		RadiusMeters:  1000,
 		IgnorePremium: false,
 	}
-	// params.ShowDisabled = "0"
-	// params.SortAsc = true
-	// params.Sort = "distance"
-	// params.OperationType = "query"
-	// params.HideOwned = "1"
-	// params.NotFoundBy = os.Getenv("GEOCACHING_CLIENT_ID")
+	params.ShowDisabled = BoolPtr(false)
+	params.SortAsc = true
+	params.Sort = "distance"
+	params.OperationType = "query"
+	params.HideOwned = BoolPtr(true)
+	params.NotFoundBy = []string{os.Getenv("GEOCACHING_CLIENT_ID")}
 
 	if rad > 0 {
 		log.Printf("Using radius %d", rad)
@@ -31,24 +36,24 @@ func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 	}
 
 	// By default get all standard types minus events
-	// params.CacheTypes = []int{
-	// 	cacheTypes["Traditional"],
-	// 	cacheTypes["Multi"],
-	// 	cacheTypes["Virtual"],
-	// 	cacheTypes["Letterbox"],
-	// 	cacheTypes["Unknown"],
-	// 	cacheTypes["Webcam"],
-	// 	cacheTypes["Earthcache"],
-	// 	cacheTypes["Wherigo"],
-	// }
+	params.CacheType = []cacheodon.CacheType{
+		cacheodon.Traditional,
+		cacheodon.Multi,
+		cacheodon.Virtual,
+		cacheodon.Letterbox,
+		cacheodon.Unknown,
+		cacheodon.Webcam,
+		cacheodon.Earthcache,
+		cacheodon.Wherigo,
+	}
 
 	return params
 }
 
 func getUnsolvedSearchTerms(rad int) cacheodon.SearchTerms {
 	params := getDefaultSearchTerms(rad)
-	// params.CacheTypes = []int{cacheTypes["Unknown"]}
-	// params.ShowCorrectedCoordsOnly = "0"
+	params.CacheType = []cacheodon.CacheType{cacheodon.Unknown}
+	params.Corrected = BoolPtr(false)
 
 	return params
 }
@@ -85,9 +90,11 @@ func getCaches(searchTerms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) 
 }
 
 func getIndex(w http.ResponseWriter, r *http.Request) {
-	rad, _ := strconv.Atoi(r.URL.Query().Get("radius"))
+	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
+	if err != nil || rad <= 0 {
+		rad = 25000 // 25km
+	}
 	params := getDefaultSearchTerms(rad)
-	log.Printf("Search params: %+v", params)
 	caches, err := getCaches(params)
 	if err != nil {
 		log.Fatal(err)
@@ -109,16 +116,16 @@ func filterUnsolved(cache cacheodon.Geocache) bool {
 		return false
 	}
 
-	excludedAttributes := map[int]bool{
-		cacheAttributes["Challenge Cache"]: true,
-		cacheAttributes["Field Puzzle"]:    true,
-		cacheAttributes["Bonus cache"]:     true,
-		// Not sure about this but it seems logical right?
-		cacheAttributes["Wireless Beacon"]: true,
+	// Build a map of excluded attribute IDs for fast lookup
+	excludedIDs := map[int]bool{
+		int(cacheodon.ChallengeCache): true,
+		int(cacheodon.FieldPuzzle):    true,
+		int(cacheodon.BonusCache):     true,
+		int(cacheodon.WirelessBeacon): true,
 	}
 
 	for _, att := range cache.Attributes {
-		if _, hasAttr := excludedAttributes[att.ID]; hasAttr && att.IsApplicable {
+		if excludedIDs[att.ID] && att.IsApplicable {
 			return false
 		}
 	}
@@ -127,7 +134,10 @@ func filterUnsolved(cache cacheodon.Geocache) bool {
 }
 
 func getUnsolved(w http.ResponseWriter, r *http.Request) {
-	rad, _ := strconv.Atoi(r.URL.Query().Get("radius"))
+	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
+	if err != nil || rad <= 0 {
+		rad = 100000 // 100km
+	}
 	params := getUnsolvedSearchTerms(rad)
 	caches, err := getCaches(params)
 	if err != nil {
