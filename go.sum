@@ -10,6 +10,8 @@ github.com/balri/cacheodon v0.2.0 h1:uPNtOfspjUmbqxFRBAW3P6b6JLYZjZpvLrCeGXNmMWY
 github.com/balri/cacheodon v0.2.0/go.mod h1:tm1HMo6aHauOSjeYwfU0UGr39xKGWV6KRsA4X7LiibI=
 github.com/balri/cacheodon v0.2.1 h1:jvd4RcCBi8Ea+LbubaPKwDxiXOs0mn7/LXjb8Q1T2vE=
 github.com/balri/cacheodon v0.2.1/go.mod h1:tm1HMo6aHauOSjeYwfU0UGr39xKGWV6KRsA4X7LiibI=
+github.com/balri/cacheodon v0.2.2 h1:2j0qzlrBo5NU2VMytmG4qa3yhfhmBrrQ4XbiYZRq0kA=
+github.com/balri/cacheodon v0.2.2/go.mod h1:tm1HMo6aHauOSjeYwfU0UGr39xKGWV6KRsA4X7LiibI=
 github.com/brianvoe/gofakeit/v6 v6.28.0 h1:Xib46XXuQfmlLS2EXRuJpqcw8St6qSZz75OUo0tgAW4=
 github.com/brianvoe/gofakeit/v6 v6.28.0/go.mod h1:Xj58BMSnFqcn/fAQeSK+/PLtC5kSb7FJIq4JyGa8vEs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

@@ -197,7 +197,10 @@ func getSolved(w http.ResponseWriter, r *http.Request) {
 			cache.Code,
 			GEOCACHE_URL_PREFIX + cache.Code,
 			cache.Name,
-			formatCoords(cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude),
+			formatCoords(
+				cache.UserCorrectedCoordinates.Latitude,
+				cache.UserCorrectedCoordinates.Longitude,
+			),
 			cache.Difficulty,
 			cache.Terrain,
 		}
