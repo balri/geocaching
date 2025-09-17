@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"geocaching/pkg/sheets"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +12,8 @@ import (
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
 )
+
+const GEOCACHE_URL_PREFIX = "https://coord.info/"
 
 // BoolPtr returns a pointer to the given bool value.
 func BoolPtr(b bool) *bool {
@@ -162,9 +166,75 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 	sendResponse(w, 200, []byte(payload))
 }
 
+func getSolved(w http.ResponseWriter, r *http.Request) {
+	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
+	if err != nil || rad <= 0 {
+		rad = 2500 // 2.5km @todo increase this once we're happy with it
+	}
+	params := getDefaultSearchTerms(rad)
+	params.CacheType = []cacheodon.CacheType{cacheodon.Unknown}
+	params.Corrected = BoolPtr(true)
+	params.NotFoundBy = []string{}
+
+	caches, err := getCaches(params)
+
+	sheet := sheets.NewSheetClient(
+		os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+		os.Getenv("SPREADSHEET_ID"),
+		os.Getenv("SPREADSHEET_SHEET_NAME"),
+	)
+	if err := sheet.EnsureSheetExists(); err != nil {
+		log.Fatalf("Failed to ensure sheet exists: %v", err)
+	}
+
+	existingCodes := sheet.GetExistingCodes()
+
+	for _, cache := range caches {
+		if existingCodes[cache.Code] {
+			continue // Skip if already present
+		}
+		row := []interface{}{
+			cache.Code,
+			GEOCACHE_URL_PREFIX + cache.Code,
+			cache.Name,
+			formatCoords(cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude),
+			cache.Difficulty,
+			cache.Terrain,
+		}
+		sheet.AppendRow(row)
+	}
+
+	log.Printf("Found %d solved caches", len(caches))
+	payload, err := json.Marshal(caches)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	sendResponse(w, 200, []byte(payload))
+}
+
 func sendResponse(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
+}
+
+func formatCoords(lat, lon float64) string {
+	latDir := "N"
+	if lat < 0 {
+		latDir = "S"
+		lat = -lat
+	}
+	lonDir := "E"
+	if lon < 0 {
+		lonDir = "W"
+		lon = -lon
+	}
+	latDeg := int(lat)
+	latMin := (lat - float64(latDeg)) * 60
+	lonDeg := int(lon)
+	lonMin := (lon - float64(lonDeg)) * 60
+	return fmt.Sprintf("%s%d %06.3f %s%d %06.3f", latDir, latDeg, latMin, lonDir, lonDeg, lonMin)
 }
