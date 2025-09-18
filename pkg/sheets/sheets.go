@@ -30,7 +30,7 @@ func NewSheetClient(jsonPath, spreadsheetID, sheetName string) *SheetClient {
 	}
 }
 
-func (s *SheetClient) AppendRow(values []interface{}) {
+func (s *SheetClient) AppendRows(rows [][]interface{}) {
 	ctx := context.Background()
 	var err error
 	maxRetries := 15
@@ -39,7 +39,7 @@ func (s *SheetClient) AppendRow(values []interface{}) {
 		_, err = s.service.Spreadsheets.Values.Append(
 			s.spreadsheetID,
 			s.sheetName+"!A:Z",
-			&sheets.ValueRange{Values: [][]interface{}{values}},
+			&sheets.ValueRange{Values: rows},
 		).ValueInputOption("RAW").InsertDataOption("INSERT_ROWS").Context(ctx).Do()
 		if err == nil {
 			return
@@ -54,10 +54,10 @@ func (s *SheetClient) AppendRow(values []interface{}) {
 			time.Sleep(backoff)
 			continue
 		}
-		log.Printf("Failed to append row: %v", err)
+		log.Printf("Failed to append rows: %v", err)
 		return
 	}
-	log.Printf("Failed to append row after %d retries: %v", maxRetries, err)
+	log.Printf("Failed to append rows after %d retries: %v", maxRetries, err)
 }
 
 func (s *SheetClient) GetExistingCodes() map[string]bool {

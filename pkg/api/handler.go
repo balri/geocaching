@@ -169,7 +169,7 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 func getSolved(w http.ResponseWriter, r *http.Request) {
 	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
 	if err != nil || rad <= 0 {
-		rad = 2500 // 2.5km @todo increase this once we're happy with it
+		rad = 200000
 	}
 	params := getDefaultSearchTerms(rad)
 	params.CacheType = []cacheodon.CacheType{cacheodon.Unknown}
@@ -189,22 +189,33 @@ func getSolved(w http.ResponseWriter, r *http.Request) {
 
 	existingCodes := sheet.GetExistingCodes()
 
+	var rows [][]interface{}
 	for _, cache := range caches {
 		if existingCodes[cache.Code] {
 			continue // Skip if already present
 		}
+		lat := cache.UserCorrectedCoordinates.Latitude
+		lon := cache.UserCorrectedCoordinates.Longitude
 		row := []interface{}{
 			cache.Code,
 			GEOCACHE_URL_PREFIX + cache.Code,
 			cache.Name,
-			formatCoords(
-				cache.UserCorrectedCoordinates.Latitude,
-				cache.UserCorrectedCoordinates.Longitude,
-			),
+			formatCoords(lat, lon),
 			cache.Difficulty,
 			cache.Terrain,
 		}
-		sheet.AppendRow(row)
+		rows = append(rows, row)
+	}
+
+	if len(rows) > 0 {
+		const batchSize = 1000
+		for i := 0; i < len(rows); i += batchSize {
+			end := i + batchSize
+			if end > len(rows) {
+				end = len(rows)
+			}
+			sheet.AppendRows(rows[i:end])
+		}
 	}
 
 	log.Printf("Found %d solved caches", len(caches))
@@ -225,6 +236,9 @@ func sendResponse(w http.ResponseWriter, status int, body []byte) {
 }
 
 func formatCoords(lat, lon float64) string {
+	if lat == 0 && lon == 0 {
+		return ""
+	}
 	latDir := "N"
 	if lat < 0 {
 		latDir = "S"
