@@ -5,15 +5,52 @@ import (
 	"fmt"
 	"geocaching/pkg/sheets"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
 )
 
 const GEOCACHE_URL_PREFIX = "https://coord.info/"
+
+const searchLat = -27.4705
+const searchLon = 153.0260
+
+var cacheTypes = map[cacheodon.CacheType]string{
+	cacheodon.Traditional:    "Traditional",
+	cacheodon.Multi:          "Multi",
+	cacheodon.Virtual:        "Virtual",
+	cacheodon.Letterbox:      "Letterbox",
+	cacheodon.Event:          "Event",
+	cacheodon.Unknown:        "Unknown",
+	cacheodon.APE:            "A.P.E. Cache",
+	cacheodon.Webcam:         "Webcam",
+	cacheodon.Locationless:   "Locationless",
+	cacheodon.CITO:           "CITO",
+	cacheodon.Earthcache:     "Earthcache",
+	cacheodon.Mega:           "Mega",
+	cacheodon.GPSMaze:        "GPS Maze",
+	cacheodon.Wherigo:        "Wherigo",
+	cacheodon.CommunityEvent: "Community Event",
+	cacheodon.HQCache:        "HQ Cache",
+	cacheodon.HQCelebration:  "HQ Celebration",
+	cacheodon.BlockParty:     "Block Party",
+	cacheodon.Giga:           "Giga",
+}
+
+var cacheSizes = map[cacheodon.CacheSize]string{
+	cacheodon.NotChosen:   "Not chosen",
+	cacheodon.Micro:       "Micro",
+	cacheodon.Regular:     "Regular",
+	cacheodon.Large:       "Large",
+	cacheodon.VirtualSize: "Virtual",
+	cacheodon.Other:       "Other",
+	cacheodon.Small:       "Small",
+}
 
 // BoolPtr returns a pointer to the given bool value.
 func BoolPtr(b bool) *bool {
@@ -22,8 +59,8 @@ func BoolPtr(b bool) *bool {
 
 func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 	params := cacheodon.SearchTerms{
-		Latitude:      -27.4705,
-		Longitude:     153.0260,
+		Latitude:      searchLat,
+		Longitude:     searchLon,
 		RadiusMeters:  1000,
 		IgnorePremium: false,
 	}
@@ -166,17 +203,38 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 	sendResponse(w, 200, []byte(payload))
 }
 
-func getSolved(w http.ResponseWriter, r *http.Request) {
-	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
-	if err != nil || rad <= 0 {
-		rad = 200000
-	}
+func RunSolvedSync() error {
+	rad := 200000
 	params := getDefaultSearchTerms(rad)
-	params.CacheType = []cacheodon.CacheType{cacheodon.Unknown}
+	params.CacheType = []cacheodon.CacheType{
+		cacheodon.Unknown,
+		cacheodon.Multi,
+		cacheodon.Letterbox,
+		cacheodon.Wherigo,
+	}
 	params.Corrected = BoolPtr(true)
 	params.NotFoundBy = []string{}
 
+	// 	params := cacheodon.SearchTerms{
+	// 	CacheType: []cacheodon.CacheType{
+	// 		cacheodon.Unknown,
+	// 		cacheodon.Multi,
+	// 		cacheodon.Letterbox,
+	// 		cacheodon.Wherigo,
+	// 	},
+	// 	Corrected:     BoolPtr(true),
+	// 	HideOwned:     BoolPtr(true),
+	// 	SortAsc:       true,
+	// 	Sort:          "distance",
+	// 	OperationType: cacheodon.City,
+	// 	OperationID:   "3156",
+	// }
+
 	caches, err := getCaches(params)
+	if err != nil {
+		return err
+	}
+	log.Printf("Found %d solved caches", len(caches))
 
 	sheet := sheets.NewSheetClient(
 		os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
@@ -184,27 +242,61 @@ func getSolved(w http.ResponseWriter, r *http.Request) {
 		os.Getenv("SPREADSHEET_SHEET_NAME"),
 	)
 	if err := sheet.EnsureSheetExists(); err != nil {
-		log.Fatalf("Failed to ensure sheet exists: %v", err)
+		return err
 	}
 
 	existingCodes := sheet.GetExistingCodes()
 
+	numCaches := 0
 	var rows [][]interface{}
 	for _, cache := range caches {
 		if existingCodes[cache.Code] {
-			continue // Skip if already present
+			continue
 		}
-		lat := cache.UserCorrectedCoordinates.Latitude
-		lon := cache.UserCorrectedCoordinates.Longitude
+		postedCoords := formatCoords(
+			cache.PostedCoordinates.Latitude,
+			cache.PostedCoordinates.Longitude,
+		)
+		correctedCoords := formatCoords(
+			cache.UserCorrectedCoordinates.Latitude,
+			cache.UserCorrectedCoordinates.Longitude,
+		)
+		if postedCoords == correctedCoords {
+			continue
+		}
+		cacheType, ok := cacheTypes[cacheodon.CacheType(cache.GeocacheType)]
+		if !ok {
+			cacheType = ""
+		}
+		cacheSize, ok := cacheSizes[cacheodon.CacheSize(cache.ContainerType)]
+		if !ok {
+			cacheSize = ""
+		}
+		cacheFound := ""
+		if cache.UserFound {
+			cacheFound = "Yes"
+		}
+		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GEOCACHE_URL_PREFIX, cache.Code, cache.Code)
+		distance := math.Round(haversine(searchLat, searchLon, cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude)*100) / 100
 		row := []interface{}{
-			cache.Code,
-			GEOCACHE_URL_PREFIX + cache.Code,
+			link,
 			cache.Name,
-			formatCoords(lat, lon),
+			cache.FavoritePoints,
+			postedCoords,
+			correctedCoords,
+			distance,
+			formatDateForSheets(cache.PlacedDate),
+			cacheType,
+			cacheSize,
 			cache.Difficulty,
 			cache.Terrain,
+			cache.Owner.Username,
+			cache.Region,
+			cache.Country,
+			cacheFound,
 		}
 		rows = append(rows, row)
+		numCaches++
 	}
 
 	if len(rows) > 0 {
@@ -218,14 +310,9 @@ func getSolved(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("Found %d solved caches", len(caches))
-	payload, err := json.Marshal(caches)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
+	log.Printf("Added %d new solved caches to the sheet", numCaches)
 
-	sendResponse(w, 200, []byte(payload))
+	return nil
 }
 
 func sendResponse(w http.ResponseWriter, status int, body []byte) {
@@ -254,4 +341,35 @@ func formatCoords(lat, lon float64) string {
 	lonDeg := int(lon)
 	lonMin := (lon - float64(lonDeg)) * 60
 	return fmt.Sprintf("%s%d %06.3f %s%d %06.3f", latDir, latDeg, latMin, lonDir, lonDeg, lonMin)
+}
+
+func formatDateForSheets(dateStr string) interface{} {
+	if dateStr == "" {
+		return ""
+	}
+	t, err := time.Parse("2006-01-02T15:04:05", dateStr)
+	if err != nil {
+		return dateStr // fallback to original if parsing fails
+	}
+	// Google Sheets serial date: days since 1899-12-30
+	base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
+	days := t.Sub(base).Hours() / 24
+	return days
+}
+
+func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+	const R = 6371.0 // Earth radius in km
+	lat1Rad := lat1 * math.Pi / 180
+	lon1Rad := lon1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	lon2Rad := lon2 * math.Pi / 180
+
+	dlat := lat2Rad - lat1Rad
+	dlon := lon2Rad - lon1Rad
+
+	a := math.Sin(dlat/2)*math.Sin(dlat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(dlon/2)*math.Sin(dlon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return R * c
 }

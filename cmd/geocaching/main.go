@@ -2,11 +2,6 @@ package main
 
 import (
 	"flag"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"geocaching/pkg/api"
 
@@ -30,34 +25,7 @@ func main() {
 		FullTimestamp: true,
 	})
 
-	router := api.GetRouter()
-	if router != nil {
-		go startServer(router)
-	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-mainloop:
-	// In all cases, just exit and let the container restart from scratch.
-	// There's less to get wrong doing it this way.
-	for {
-		select {
-		case <-signalChan:
-			log.Info("Signalled, breaking main loop")
-			break mainloop
-		}
-	}
-}
-
-func startServer(router http.Handler) {
-	server := http.Server{
-		Addr:              listenAddress,
-		Handler:           router,
-		ReadHeaderTimeout: 2 * time.Second,
-	}
-	log.Printf("listening for HTTP on: %s", server.Addr)
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatal("ListenAndServeError", err)
+	if err := api.RunSolvedSync(); err != nil {
+		log.Fatalf("Failed to sync solved caches: %v", err)
 	}
 }

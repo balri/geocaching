@@ -40,7 +40,7 @@ func (s *SheetClient) AppendRows(rows [][]interface{}) {
 			s.spreadsheetID,
 			s.sheetName+"!A:Z",
 			&sheets.ValueRange{Values: rows},
-		).ValueInputOption("RAW").InsertDataOption("INSERT_ROWS").Context(ctx).Do()
+		).ValueInputOption("USER_ENTERED").InsertDataOption("INSERT_ROWS").Context(ctx).Do()
 		if err == nil {
 			return
 		}
