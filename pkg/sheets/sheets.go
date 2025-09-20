@@ -102,29 +102,129 @@ func (s *SheetClient) GetExistingCodes() map[string]bool {
 	return codes
 }
 
-func (s *SheetClient) EnsureSheetExists() error {
+func (s *SheetClient) EnsureSheetExistsWithHeaderAndFilter(header []interface{}) error {
 	ctx := context.Background()
-	// 1. Get spreadsheet metadata
 	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
 	if err != nil {
 		return err
 	}
-	// 2. Check if sheet exists
+	var sheetID int64 = -1
 	for _, sh := range ss.Sheets {
 		if sh.Properties.Title == s.sheetName {
-			return nil // Sheet exists
+			sheetID = sh.Properties.SheetId
+			break
 		}
 	}
-	// 3. Add the sheet if not found
-	addSheetReq := &sheets.Request{
-		AddSheet: &sheets.AddSheetRequest{
-			Properties: &sheets.SheetProperties{
-				Title: s.sheetName,
+	if sheetID == -1 {
+		// Sheet doesn't exist, create it
+		addSheetReq := &sheets.Request{
+			AddSheet: &sheets.AddSheetRequest{
+				Properties: &sheets.SheetProperties{
+					Title: s.sheetName,
+				},
+			},
+		}
+		resp, err := s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{addSheetReq},
+		}).Context(ctx).Do()
+		if err != nil {
+			return err
+		}
+		sheetID = resp.Replies[0].AddSheet.Properties.SheetId
+
+		// Add header row
+		_, err = s.service.Spreadsheets.Values.Update(
+			s.spreadsheetID,
+			s.sheetName+"!A1:Z1",
+			&sheets.ValueRange{Values: [][]interface{}{header}},
+		).ValueInputOption("RAW").Context(ctx).Do()
+		if err != nil {
+			return err
+		}
+
+		// Add filter to header row (covers header + first data row)
+		filterReq := &sheets.Request{
+			SetBasicFilter: &sheets.SetBasicFilterRequest{
+				Filter: &sheets.BasicFilter{
+					Range: &sheets.GridRange{
+						SheetId:          sheetID,
+						StartRowIndex:    0,
+						EndRowIndex:      2, // header + first data row
+						StartColumnIndex: 0,
+						EndColumnIndex:   int64(len(header)), // <-- dynamic width
+					},
+				},
+			},
+		}
+
+		// Freeze the header row
+		freezeReq := &sheets.Request{
+			UpdateSheetProperties: &sheets.UpdateSheetPropertiesRequest{
+				Properties: &sheets.SheetProperties{
+					SheetId: sheetID,
+					GridProperties: &sheets.GridProperties{
+						FrozenRowCount: 1,
+					},
+				},
+				Fields: "gridProperties.frozenRowCount",
+			},
+		}
+
+		_, err = s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{filterReq, freezeReq},
+		}).Context(ctx).Do()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
+	ctx := context.Background()
+	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+	var sheetID int64 = -1
+	for _, sh := range ss.Sheets {
+		if sh.Properties.Title == s.sheetName {
+			sheetID = sh.Properties.SheetId
+			break
+		}
+	}
+	if sheetID == -1 {
+		return nil // Sheet not found
+	}
+
+	// Get all values in the sheet to determine the last non-empty row
+	resp, err := s.service.Spreadsheets.Values.Get(
+		s.spreadsheetID,
+		s.sheetName,
+	).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+	rowCount := int64(len(resp.Values))
+	if rowCount < 2 {
+		rowCount = 2 // Always cover at least header + one row for filter
+	}
+
+	filterReq := &sheets.Request{
+		SetBasicFilter: &sheets.SetBasicFilterRequest{
+			Filter: &sheets.BasicFilter{
+				Range: &sheets.GridRange{
+					SheetId:          sheetID,
+					StartRowIndex:    0,
+					EndRowIndex:      rowCount,
+					StartColumnIndex: 0,
+					EndColumnIndex:   colCount,
+				},
 			},
 		},
 	}
 	_, err = s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-		Requests: []*sheets.Request{addSheetReq},
+		Requests: []*sheets.Request{filterReq},
 	}).Context(ctx).Do()
 	return err
 }

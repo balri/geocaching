@@ -68,6 +68,25 @@ var cacheSizes = map[cacheodon.CacheSize]string{
 	cacheodon.Small:       "Small",
 }
 
+var headerRow = []interface{}{
+	"Code",
+	"Name",
+	"Fav",
+	"Original Coords",
+	"Corrected Coords",
+	"Distance",
+	"Placed Date",
+	"Type",
+	"Size",
+	"Diff",
+	"Terr",
+	"Owner",
+	"Region",
+	"Country",
+	"Found",
+	"Note",
+}
+
 // BoolPtr returns a pointer to the given bool value.
 func BoolPtr(b bool) *bool {
 	return &b
@@ -171,7 +190,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		os.Getenv("SPREADSHEET_ID"),
 		region,
 	)
-	if err := sheet.EnsureSheetExists(); err != nil {
+	if err := sheet.EnsureSheetExistsWithHeaderAndFilter(headerRow); err != nil {
 		return err
 	}
 
@@ -250,6 +269,11 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		sheet.AppendRows(rows)
 	}
 
+	err = sheet.ExtendFilterToAllRows(int64(len(headerRow)))
+	if err != nil {
+		log.Printf("Failed to extend filter: %v", err)
+	}
+
 	log.Printf("Added %d new solved caches to the sheet", numCaches)
 
 	return nil
@@ -306,10 +330,7 @@ func formatDateForSheets(dateStr string) interface{} {
 	if err != nil {
 		return dateStr // fallback to original if parsing fails
 	}
-	// Google Sheets serial date: days since 1899-12-30
-	base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
-	days := t.Sub(base).Hours() / 24
-	return days
+	return t.Format("2006-01-02")
 }
 
 func haversine(lat1, lon1, lat2, lon2 float64) float64 {
