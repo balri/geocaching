@@ -1,14 +1,13 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"geocaching/pkg/sheets"
+	"html"
 	"log"
 	"math"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +18,10 @@ const GEOCACHE_URL_PREFIX = "https://coord.info/"
 
 const searchLat = -27.4705
 const searchLon = 153.0260
+const batchSize = 500
 
 var (
+	// Do not rename these or a new sheet will be created
 	regions = map[string]string{
 		"52": "New South Wales",
 		"53": "Victoria",
@@ -135,100 +136,14 @@ func getClient() (*cacheodon.GeocachingAPI, error) {
 	return client, nil
 }
 
-func getCaches(searchTerms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
-	api, err := getClient()
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
+func getCaches(
+	api *cacheodon.GeocachingAPI,
+	searchTerms cacheodon.SearchTerms,
+) ([]cacheodon.Geocache, error) {
 	return api.Search(searchTerms)
 }
 
-func getIndex(w http.ResponseWriter, r *http.Request) {
-	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
-	if err != nil || rad <= 0 {
-		rad = 25000 // 25km
-	}
-	params := getDefaultSearchTerms(rad)
-	caches, err := getCaches(params)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	log.Printf("Found %d caches", len(caches))
-	payload, err := json.Marshal(caches)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	sendResponse(w, 200, []byte(payload))
-}
-
-func filterUnsolved(cache cacheodon.Geocache) bool {
-	if strings.Contains(strings.ToLower(cache.Name), "bonus") {
-		return false
-	}
-
-	// Build a map of excluded attribute IDs for fast lookup
-	excludedIDs := map[int]bool{
-		int(cacheodon.ChallengeCache): true,
-		int(cacheodon.FieldPuzzle):    true,
-		int(cacheodon.BonusCache):     true,
-		int(cacheodon.WirelessBeacon): true,
-	}
-
-	for _, att := range cache.Attributes {
-		if excludedIDs[att.ID] && att.IsApplicable {
-			return false
-		}
-	}
-
-	return true
-}
-
-func getUnsolved(w http.ResponseWriter, r *http.Request) {
-	rad, err := strconv.Atoi(r.URL.Query().Get("radius"))
-	if err != nil || rad <= 0 {
-		rad = 100000 // 100km
-	}
-	params := getUnsolvedSearchTerms(rad)
-	caches, err := getCaches(params)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	var filteredCaches []cacheodon.Geocache
-	for _, cache := range caches {
-		if filterUnsolved(cache) {
-			filteredCaches = append(filteredCaches, cache)
-		}
-	}
-
-	log.Printf("Found %d unsolved caches", len(filteredCaches))
-	payload, err := json.Marshal(filteredCaches)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	sendResponse(w, 200, []byte(payload))
-}
-
-func RunSolvedSync() error {
-	for regionID, region := range regions {
-		log.Printf("Syncing solved caches for region: %s", region)
-		if err := runSolved(regionID, region); err != nil {
-			return fmt.Errorf("failed to sync region %s: %w", region, err)
-		}
-	}
-	return nil
-}
-
-func runSolved(regionID, region string) error {
+func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 	params := cacheodon.SearchTerms{
 		CacheType: []cacheodon.CacheType{
 			cacheodon.Unknown,
@@ -245,7 +160,7 @@ func runSolved(regionID, region string) error {
 		OriginID:      regionID,
 	}
 
-	caches, err := getCaches(params)
+	caches, err := getCaches(api, params)
 	if err != nil {
 		return err
 	}
@@ -293,6 +208,17 @@ func runSolved(regionID, region string) error {
 		}
 		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GEOCACHE_URL_PREFIX, cache.Code, cache.Code)
 		distance := math.Round(haversine(searchLat, searchLon, cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude)*100) / 100
+
+		var note string
+		if cache.HasCallerNote {
+			note, err = api.GetCacheNoteForGeocache(cache)
+			if err != nil {
+				note = ""
+			}
+			note = html.UnescapeString(note)
+			note = strings.ReplaceAll(note, "\n", " ")
+		}
+
 		row := []interface{}{
 			link,
 			cache.Name,
@@ -309,20 +235,19 @@ func runSolved(regionID, region string) error {
 			cache.Region,
 			cache.Country,
 			cacheFound,
+			note,
 		}
 		rows = append(rows, row)
 		numCaches++
+
+		if len(rows) >= batchSize {
+			sheet.AppendRows(rows)
+			rows = [][]interface{}{}
+		}
 	}
 
-	if len(rows) > 0 {
-		const batchSize = 1000
-		for i := 0; i < len(rows); i += batchSize {
-			end := i + batchSize
-			if end > len(rows) {
-				end = len(rows)
-			}
-			sheet.AppendRows(rows[i:end])
-		}
+	if len(rows) >= 0 {
+		sheet.AppendRows(rows)
 	}
 
 	log.Printf("Added %d new solved caches to the sheet", numCaches)
@@ -336,7 +261,13 @@ func RunSolvedSyncForRegion(regionID string) error {
 		return fmt.Errorf("unknown region ID: %s", regionID)
 	}
 	log.Printf("Syncing solved caches for region: %s", region)
-	return runSolved(regionID, region)
+
+	api, err := getClient()
+	if err != nil {
+		return err
+	}
+
+	return runSolved(api, regionID, region)
 }
 
 func sendResponse(w http.ResponseWriter, status int, body []byte) {
