@@ -20,6 +20,21 @@ const GEOCACHE_URL_PREFIX = "https://coord.info/"
 const searchLat = -27.4705
 const searchLon = 153.0260
 
+var (
+	regions = map[string]string{
+		"52": "New South Wales",
+		"53": "Victoria",
+		"54": "Queensland",
+		"55": "South Australia",
+		"56": "Western Australia",
+		"57": "Tasmania",
+		"58": "Northern Territory",
+		"59": "Australian Capital Territory",
+		"82": "North Island NZ",
+		"86": "South Island NZ",
+	}
+)
+
 var cacheTypes = map[cacheodon.CacheType]string{
 	cacheodon.Traditional:    "Traditional",
 	cacheodon.Multi:          "Multi",
@@ -65,9 +80,9 @@ func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 		IgnorePremium: false,
 	}
 	params.ShowDisabled = BoolPtr(false)
-	params.SortAsc = true
+	params.SortAsc = BoolPtr(true)
 	params.Sort = "distance"
-	params.OperationType = "query"
+	params.OriginType = "query"
 	params.HideOwned = BoolPtr(true)
 	params.NotFoundBy = []string{os.Getenv("GEOCACHING_CLIENT_ID")}
 
@@ -204,31 +219,31 @@ func getUnsolved(w http.ResponseWriter, r *http.Request) {
 }
 
 func RunSolvedSync() error {
-	rad := 200000
-	params := getDefaultSearchTerms(rad)
-	params.CacheType = []cacheodon.CacheType{
-		cacheodon.Unknown,
-		cacheodon.Multi,
-		cacheodon.Letterbox,
-		cacheodon.Wherigo,
+	for regionID, region := range regions {
+		log.Printf("Syncing solved caches for region: %s", region)
+		if err := runSolved(regionID, region); err != nil {
+			return fmt.Errorf("failed to sync region %s: %w", region, err)
+		}
 	}
-	params.Corrected = BoolPtr(true)
-	params.NotFoundBy = []string{}
+	return nil
+}
 
-	// 	params := cacheodon.SearchTerms{
-	// 	CacheType: []cacheodon.CacheType{
-	// 		cacheodon.Unknown,
-	// 		cacheodon.Multi,
-	// 		cacheodon.Letterbox,
-	// 		cacheodon.Wherigo,
-	// 	},
-	// 	Corrected:     BoolPtr(true),
-	// 	HideOwned:     BoolPtr(true),
-	// 	SortAsc:       true,
-	// 	Sort:          "distance",
-	// 	OperationType: cacheodon.City,
-	// 	OperationID:   "3156",
-	// }
+func runSolved(regionID, region string) error {
+	params := cacheodon.SearchTerms{
+		CacheType: []cacheodon.CacheType{
+			cacheodon.Unknown,
+			cacheodon.Multi,
+			cacheodon.Letterbox,
+			cacheodon.Wherigo,
+		},
+		IgnorePremium: false,
+		Corrected:     BoolPtr(true),
+		HideOwned:     BoolPtr(true),
+		SortAsc:       BoolPtr(true),
+		Sort:          "distance",
+		OriginType:    cacheodon.Region,
+		OriginID:      regionID,
+	}
 
 	caches, err := getCaches(params)
 	if err != nil {
@@ -239,7 +254,7 @@ func RunSolvedSync() error {
 	sheet := sheets.NewSheetClient(
 		os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
 		os.Getenv("SPREADSHEET_ID"),
-		os.Getenv("SPREADSHEET_SHEET_NAME"),
+		region,
 	)
 	if err := sheet.EnsureSheetExists(); err != nil {
 		return err
@@ -313,6 +328,15 @@ func RunSolvedSync() error {
 	log.Printf("Added %d new solved caches to the sheet", numCaches)
 
 	return nil
+}
+
+func RunSolvedSyncForRegion(regionID string) error {
+	region, ok := regions[regionID]
+	if !ok {
+		return fmt.Errorf("unknown region ID: %s", regionID)
+	}
+	log.Printf("Syncing solved caches for region: %s", region)
+	return runSolved(regionID, region)
 }
 
 func sendResponse(w http.ResponseWriter, status int, body []byte) {

@@ -2,5 +2,5 @@
 
 Get package:
 ```
-go get github.com/balri/cacheodon@v0.2.2
+go get github.com/balri/cacheodon@v0.2.3
 ```

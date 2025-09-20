@@ -2,30 +2,32 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"geocaching/pkg/api"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	listenAddress = ":80"
-)
-
 func main() {
 	verbose := flag.Bool("v", false, "Verbose logging")
+	region := flag.String("region", "", "Region ID to sync (required)")
 
 	flag.Parse()
 	if *verbose {
-		// Set the log level to debug
 		log.SetLevel(log.DebugLevel)
 	}
-	// Set the log format to include a leading timestamp in ISO8601 format
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
 
-	if err := api.RunSolvedSync(); err != nil {
+	if *region == "" {
+		log.Error("You must specify a region ID with -region")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	if err := api.RunSolvedSyncForRegion(*region); err != nil {
 		log.Fatalf("Failed to sync solved caches: %v", err)
 	}
 }
