@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"geocaching/pkg/sheets"
 	"html"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
+	log "github.com/sirupsen/logrus"
 )
 
 const GEOCACHE_URL_PREFIX = "https://coord.info/"
@@ -234,8 +234,6 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			if err != nil {
 				note = ""
 			}
-			note = html.UnescapeString(note)
-			note = strings.ReplaceAll(note, "\n", " ")
 		}
 
 		row := []interface{}{

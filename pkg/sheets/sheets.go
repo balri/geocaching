@@ -2,10 +2,10 @@ package sheets
 
 import (
 	"context"
-	"log"
 	"math"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
