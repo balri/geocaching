@@ -3,11 +3,9 @@ package api
 import (
 	"fmt"
 	"geocaching/pkg/sheets"
-	"html"
 	"math"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
