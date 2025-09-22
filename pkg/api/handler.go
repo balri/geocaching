@@ -236,7 +236,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 
 		row := []interface{}{
 			link,
-			cache.Name,
+			"'" + cache.Name,
 			cache.FavoritePoints,
 			postedCoords,
 			correctedCoords,
@@ -246,11 +246,11 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			cacheSize,
 			cache.Difficulty,
 			cache.Terrain,
-			cache.Owner.Username,
+			"'" + cache.Owner.Username,
 			cache.Region,
 			cache.Country,
 			cacheFound,
-			note,
+			"'" + note,
 		}
 		rows = append(rows, row)
 		numCaches++
