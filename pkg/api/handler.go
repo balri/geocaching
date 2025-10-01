@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
@@ -167,6 +168,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			cacheodon.Multi,
 			cacheodon.Letterbox,
 			cacheodon.Wherigo,
+			cacheodon.Virtual,
 		},
 		IgnorePremium: false,
 		Corrected:     BoolPtr(true),
@@ -192,14 +194,16 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		return err
 	}
 
-	existingCodes := sheet.GetExistingCodes()
+	existingRows := rowsToCacheRows(sheet.GetExistingRows())
+	var rowsToAppend CacheRows
+	var rowsToUpdate []struct {
+		RowIndex int
+		RowData  CacheRow
+	}
 
-	numCaches := 0
-	var rows [][]interface{}
+	rowsUpdated := 0
+	rowsAdded := 0
 	for _, cache := range caches {
-		if existingCodes[cache.Code] {
-			continue
-		}
 		postedCoords := formatCoords(
 			cache.PostedCoordinates.Latitude,
 			cache.PostedCoordinates.Longitude,
@@ -226,43 +230,63 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GEOCACHE_URL_PREFIX, cache.Code, cache.Code)
 		distance := math.Round(haversine(searchLat, searchLon, cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude)*100) / 100
 
+		existing, exists := existingRows[cache.Code]
+
 		var note string
-		if cache.HasCallerNote {
+		if exists {
+			note = fmt.Sprint(existing.Note)
+		} else if cache.HasCallerNote {
 			note, err = api.GetCacheNoteForGeocache(cache)
 			if err != nil {
 				note = ""
 			}
 		}
 
-		row := []interface{}{
-			link,
-			"'" + cache.Name,
-			cache.FavoritePoints,
-			postedCoords,
-			correctedCoords,
-			distance,
-			formatDateForSheets(cache.PlacedDate),
-			cacheType,
-			cacheSize,
-			cache.Difficulty,
-			cache.Terrain,
-			"'" + cache.Owner.Username,
-			cache.Region,
-			cache.Country,
-			cacheFound,
-			"'" + note,
+		row := CacheRow{
+			Code:            link,
+			Name:            cache.Name,
+			Favorite:        strconv.Itoa(cache.FavoritePoints),
+			PostedCoords:    postedCoords,
+			CorrectedCoords: correctedCoords,
+			Distance:        fmt.Sprintf("%.2f", distance),
+			PlacedDate:      formatDateForSheets(cache.PlacedDate),
+			CacheType:       cacheType,
+			CacheSize:       cacheSize,
+			Difficulty:      fmt.Sprintf("%g", cache.Difficulty),
+			Terrain:         fmt.Sprintf("%g", cache.Terrain),
+			Owner:           cache.Owner.Username,
+			Region:          cache.Region,
+			Country:         cache.Country,
+			Found:           cacheFound,
+			Note:            note,
 		}
-		rows = append(rows, row)
-		numCaches++
 
-		if len(rows) >= batchSize {
-			sheet.AppendRows(rows)
-			rows = [][]interface{}{}
+		if exists {
+			// Compare row slices
+			if !rowsEqual(row, existing) {
+				log.Debug("index: ", existing.Index, " - updating row for cache ", cache.Code)
+				rowsToUpdate = append(rowsToUpdate, struct {
+					RowIndex int
+					RowData  CacheRow
+				}{RowIndex: existing.Index, RowData: row})
+				rowsUpdated++
+			}
+		} else {
+			rowsToAppend = append(rowsToAppend, row)
+			rowsAdded++
+		}
+
+		if len(rowsToAppend) >= batchSize {
+			sheet.AppendRows(rowsToAppend.ToRows())
+			rowsToAppend = []CacheRow{}
 		}
 	}
 
-	if len(rows) >= 0 {
-		sheet.AppendRows(rows)
+	for _, update := range rowsToUpdate {
+		sheet.UpdateRow(update.RowIndex, update.RowData.ToRow())
+	}
+	if len(rowsToAppend) > 0 {
+		sheet.AppendRows(rowsToAppend.ToRows())
 	}
 
 	err = sheet.ExtendFilterToAllRows(int64(len(headerRow)))
@@ -270,9 +294,84 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		log.Printf("Failed to extend filter: %v", err)
 	}
 
-	log.Printf("Added %d new solved caches to the sheet", numCaches)
+	log.Printf("Updated %d existing solved caches in the sheet", rowsUpdated)
+	log.Printf("Added %d new solved caches to the sheet", rowsAdded)
 
 	return nil
+}
+
+// Check if two CacheRow entries are equal (ignoring Note)
+func rowsEqual(a, b CacheRow) bool {
+	if a.Name != b.Name {
+		log.Debug("Name differs:", a.Name, b.Name)
+		return false
+	}
+	if a.Favorite != b.Favorite {
+		log.Debug("Favorite differs:", a.Favorite, b.Favorite)
+		return false
+	}
+	if a.PostedCoords != b.PostedCoords {
+		log.Debug("PostedCoords differs:", a.PostedCoords, b.PostedCoords)
+		return false
+	}
+	if a.CorrectedCoords != b.CorrectedCoords {
+		log.Debug("CorrectedCoords differs:", a.CorrectedCoords, b.CorrectedCoords)
+		return false
+	}
+	if a.Distance != b.Distance {
+		log.Debug("Distance differs:", a.Distance, b.Distance)
+		return false
+	}
+	if a.PlacedDate != b.PlacedDate {
+		log.Debug("PlacedDate differs:", a.PlacedDate, b.PlacedDate)
+		return false
+	}
+	if a.CacheType != b.CacheType {
+		log.Debug("CacheType differs:", a.CacheType, b.CacheType)
+		return false
+	}
+	if a.CacheSize != b.CacheSize {
+		log.Debug("CacheSize differs:", a.CacheSize, b.CacheSize)
+		return false
+	}
+	if a.Difficulty != b.Difficulty {
+		log.Debug("Difficulty differs:", a.Difficulty, b.Difficulty)
+		return false
+	}
+	if a.Terrain != b.Terrain {
+		log.Debug("Terrain differs:", a.Terrain, b.Terrain)
+		return false
+	}
+	if a.Owner != b.Owner {
+		log.Debug("Owner differs:", a.Owner, b.Owner)
+		return false
+	}
+	if a.Region != b.Region {
+		log.Debug("Region differs:", a.Region, b.Region)
+		return false
+	}
+	if a.Country != b.Country {
+		log.Debug("Country differs:", a.Country, b.Country)
+		return false
+	}
+	if a.Found != b.Found {
+		log.Debug("Found differs:", a.Found, b.Found)
+		return false
+	}
+	return a.Name == b.Name &&
+		a.Favorite == b.Favorite &&
+		a.PostedCoords == b.PostedCoords &&
+		a.CorrectedCoords == b.CorrectedCoords &&
+		a.Distance == b.Distance &&
+		a.PlacedDate == b.PlacedDate &&
+		a.CacheType == b.CacheType &&
+		a.CacheSize == b.CacheSize &&
+		a.Difficulty == b.Difficulty &&
+		a.Terrain == b.Terrain &&
+		a.Owner == b.Owner &&
+		a.Region == b.Region &&
+		a.Country == b.Country &&
+		a.Found == b.Found
 }
 
 func RunSolvedSyncForRegion(regionID string) error {
@@ -318,7 +417,7 @@ func formatCoords(lat, lon float64) string {
 	return fmt.Sprintf("%s%d %06.3f %s%d %06.3f", latDir, latDeg, latMin, lonDir, lonDeg, lonMin)
 }
 
-func formatDateForSheets(dateStr string) interface{} {
+func formatDateForSheets(dateStr string) string {
 	if dateStr == "" {
 		return ""
 	}

@@ -2,6 +2,7 @@ package sheets
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -28,6 +29,16 @@ func NewSheetClient(jsonPath, spreadsheetID, sheetName string) *SheetClient {
 		spreadsheetID: spreadsheetID,
 		sheetName:     sheetName,
 	}
+}
+
+func (s *SheetClient) UpdateRow(rowIndex int, row []interface{}) error {
+	ctx := context.Background()
+	_, err := s.service.Spreadsheets.Values.Update(
+		s.spreadsheetID,
+		fmt.Sprintf("%s!A%d:Z%d", s.sheetName, rowIndex+1, rowIndex+1),
+		&sheets.ValueRange{Values: [][]interface{}{row}},
+	).ValueInputOption("USER_ENTERED").Context(ctx).Do()
+	return err
 }
 
 func (s *SheetClient) AppendRows(rows [][]interface{}) {
@@ -60,46 +71,35 @@ func (s *SheetClient) AppendRows(rows [][]interface{}) {
 	log.Printf("Failed to append rows after %d retries: %v", maxRetries, err)
 }
 
-func (s *SheetClient) GetExistingCodes() map[string]bool {
+type RowWithIndex struct {
+	Index int // 0-based index (0 = header, 1 = first data row)
+	Row   []interface{}
+}
+
+func (s *SheetClient) GetExistingRows() map[string]RowWithIndex {
 	ctx := context.Background()
-	var resp *sheets.ValueRange
-	var err error
-	maxRetries := 15
-	maxBackoff := 60 * time.Second
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		resp, err = s.service.Spreadsheets.Values.Get(
-			s.spreadsheetID,
-			s.sheetName+"!A:A",
-		).Context(ctx).Do()
-		if err == nil {
-			break
-		}
-		if gErr, ok := err.(*googleapi.Error); ok && (gErr.Code == 429 || gErr.Code == 403) {
-			backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-			log.Printf("Rate limited by Google Sheets API, retrying in %v...", backoff)
-			time.Sleep(backoff)
+	resp, err := s.service.Spreadsheets.Values.Get(
+		s.spreadsheetID,
+		s.sheetName,
+	).Context(ctx).Do()
+	if err != nil {
+		log.Printf("Failed to read existing rows: %v", err)
+		return nil
+	}
+	rows := make(map[string]RowWithIndex)
+	for i, row := range resp.Values {
+		if i == 0 || len(row) == 0 { // skip header or empty
 			continue
 		}
-		log.Printf("Failed to read existing codes: %v", err)
-		return nil
-	}
-	if err != nil {
-		log.Printf("Failed to read existing codes after %d retries: %v", maxRetries, err)
-		return nil
-	}
-	codes := make(map[string]bool)
-	for _, row := range resp.Values {
-		if len(row) > 0 {
-			code, ok := row[0].(string)
-			if ok {
-				codes[code] = true
+		code, ok := row[0].(string)
+		if ok {
+			rows[code] = RowWithIndex{
+				Index: i,
+				Row:   row,
 			}
 		}
 	}
-	return codes
+	return rows
 }
 
 func (s *SheetClient) EnsureSheetExistsWithHeaderAndFilter(header []interface{}) error {
