@@ -228,7 +228,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			cacheFound = "Yes"
 		}
 		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GEOCACHE_URL_PREFIX, cache.Code, cache.Code)
-		distance := math.Round(haversine(searchLat, searchLon, cache.PostedCoordinates.Latitude, cache.PostedCoordinates.Longitude)*100) / 100
+		distance := math.Round(haversine(searchLat, searchLon, cache.UserCorrectedCoordinates.Latitude, cache.UserCorrectedCoordinates.Longitude)*100) / 100
 
 		existing, exists := existingRows[cache.Code]
 
