@@ -84,6 +84,7 @@ var headerRow = []interface{}{
 	"Country",
 	"Found",
 	"Note",
+	"Date Updated",
 }
 
 // BoolPtr returns a pointer to the given bool value.
@@ -259,6 +260,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			Country:         cache.Country,
 			Found:           cacheFound,
 			Note:            note,
+			DateUpdated:     time.Now().Format("2006-01-02 15:04:05"),
 		}
 
 		if exists {
@@ -358,20 +360,7 @@ func rowsEqual(a, b CacheRow) bool {
 		log.Debug("Found differs:", a.Found, b.Found)
 		return false
 	}
-	return a.Name == b.Name &&
-		a.Favorite == b.Favorite &&
-		a.PostedCoords == b.PostedCoords &&
-		a.CorrectedCoords == b.CorrectedCoords &&
-		a.Distance == b.Distance &&
-		a.PlacedDate == b.PlacedDate &&
-		a.CacheType == b.CacheType &&
-		a.CacheSize == b.CacheSize &&
-		a.Difficulty == b.Difficulty &&
-		a.Terrain == b.Terrain &&
-		a.Owner == b.Owner &&
-		a.Region == b.Region &&
-		a.Country == b.Country &&
-		a.Found == b.Found
+	return true
 }
 
 func RunSolvedSyncForRegion(regionID string) error {

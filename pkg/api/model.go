@@ -26,6 +26,7 @@ type CacheRow struct {
 	Country         string
 	Found           string
 	Note            string
+	DateUpdated     string
 }
 
 func rowToCacheRow(row sheets.RowWithIndex) CacheRow {
@@ -100,6 +101,7 @@ func (c CacheRow) ToRow() []interface{} {
 		c.Country,
 		c.Found,
 		"'" + c.Note,
+		c.DateUpdated,
 	}
 }
 
