@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"geocaching/pkg/sheets"
 	"math"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -33,6 +32,8 @@ var (
 		"82": "North Island NZ",
 		"86": "South Island NZ",
 	}
+
+	nowFunc = time.Now // default
 )
 
 var cacheTypes = map[cacheodon.CacheType]string{
@@ -134,7 +135,7 @@ func getUnsolvedSearchTerms(rad int) cacheodon.SearchTerms {
 	return params
 }
 
-func getClient() (*cacheodon.GeocachingAPI, error) {
+func getAPIClient() (GeocachingAPI, error) {
 	config := cacheodon.APIConfig{
 		GeocachingAPIURL: "https://www.geocaching.com",
 	}
@@ -155,14 +156,32 @@ func getClient() (*cacheodon.GeocachingAPI, error) {
 	return client, nil
 }
 
+func getSheetsClient(sheetName string) (sheets.SheetWriter, error) {
+	sheet := sheets.NewSheetClient(
+		os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+		os.Getenv("SPREADSHEET_ID"),
+		sheetName,
+	)
+
+	if err := sheet.EnsureSheetExistsWithHeaderAndFilter(headerRow); err != nil {
+		return nil, err
+	}
+
+	return sheet, nil
+}
+
 func getCaches(
-	api *cacheodon.GeocachingAPI,
+	api GeocachingAPI,
 	searchTerms cacheodon.SearchTerms,
 ) ([]cacheodon.Geocache, error) {
 	return api.Search(searchTerms)
 }
 
-func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
+func runSolved(
+	api GeocachingAPI,
+	sheet sheets.SheetWriter,
+	regionID, region string,
+) error {
 	params := cacheodon.SearchTerms{
 		CacheType: []cacheodon.CacheType{
 			cacheodon.Unknown,
@@ -185,15 +204,6 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 		return err
 	}
 	log.Printf("Found %d solved caches", len(caches))
-
-	sheet := sheets.NewSheetClient(
-		os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-		os.Getenv("SPREADSHEET_ID"),
-		region,
-	)
-	if err := sheet.EnsureSheetExistsWithHeaderAndFilter(headerRow); err != nil {
-		return err
-	}
 
 	existingRows := rowsToCacheRows(sheet.GetExistingRows())
 	var rowsToAppend CacheRows
@@ -260,7 +270,7 @@ func runSolved(api *cacheodon.GeocachingAPI, regionID, region string) error {
 			Country:         cache.Country,
 			Found:           cacheFound,
 			Note:            note,
-			DateUpdated:     time.Now().Format("2006-01-02 15:04:05"),
+			DateUpdated:     nowFunc().Format("2006-01-02 15:04:05"),
 		}
 
 		if exists {
@@ -370,19 +380,17 @@ func RunSolvedSyncForRegion(regionID string) error {
 	}
 	log.Printf("Syncing solved caches for region: %s", region)
 
-	api, err := getClient()
+	api, err := getAPIClient()
 	if err != nil {
 		return err
 	}
 
-	return runSolved(api, regionID, region)
-}
+	sheet, err := getSheetsClient(region)
+	if err != nil {
+		return err
+	}
 
-func sendResponse(w http.ResponseWriter, status int, body []byte) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
+	return runSolved(api, sheet, regionID, region)
 }
 
 func formatCoords(lat, lon float64) string {

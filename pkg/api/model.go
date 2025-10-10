@@ -3,10 +3,16 @@ package api
 import (
 	"fmt"
 	"geocaching/pkg/sheets"
-
 	"strconv"
 	"time"
+
+	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
 )
+
+type GeocachingAPI interface {
+	Search(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error)
+	GetCacheNoteForGeocache(cache cacheodon.Geocache) (string, error)
+}
 
 type CacheRow struct {
 	Index           int
@@ -28,6 +34,8 @@ type CacheRow struct {
 	Note            string
 	DateUpdated     string
 }
+
+type CacheRows []CacheRow
 
 func rowToCacheRow(row sheets.RowWithIndex) CacheRow {
 	get := func(i int) string {
@@ -104,9 +112,6 @@ func (c CacheRow) ToRow() []interface{} {
 		c.DateUpdated,
 	}
 }
-
-// CacheRowSlice is a named type for a slice of CacheRow
-type CacheRows []CacheRow
 
 func (cs CacheRows) ToRows() [][]interface{} {
 	rows := make([][]interface{}, len(cs))
