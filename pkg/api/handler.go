@@ -244,7 +244,7 @@ func runSolved(
 		existing, exists := existingRows[cache.Code]
 
 		var note string
-		if exists {
+		if exists && existing.Note != "" {
 			note = fmt.Sprint(existing.Note)
 		} else if cache.HasCallerNote {
 			note, err = api.GetCacheNoteForGeocache(cache)
