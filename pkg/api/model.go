@@ -113,6 +113,41 @@ func (c CacheRow) ToRow() []interface{} {
 	}
 }
 
+func (c CacheRow) ToRowForUpdate() []interface{} {
+	// Convert numeric fields to float64
+	fav, _ := strconv.ParseFloat(c.Favorite, 64)
+	dist, _ := strconv.ParseFloat(c.Distance, 64)
+	diff, _ := strconv.ParseFloat(c.Difficulty, 64)
+	terr, _ := strconv.ParseFloat(c.Terrain, 64)
+
+	// Convert PlacedDate to serial number if possible
+	var placedDate interface{} = c.PlacedDate
+	if t, err := time.Parse("2006-01-02", c.PlacedDate); err == nil {
+		base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
+		placedDate = t.Sub(base).Hours() / 24
+	}
+
+	return []interface{}{
+		c.Code,
+		c.Name,
+		fav,
+		c.PostedCoords,
+		c.CorrectedCoords,
+		dist,
+		placedDate,
+		c.CacheType,
+		c.CacheSize,
+		diff,
+		terr,
+		c.Owner,
+		c.Region,
+		c.Country,
+		c.Found,
+		c.Note,
+		c.DateUpdated,
+	}
+}
+
 func (cs CacheRows) ToRows() [][]interface{} {
 	rows := make([][]interface{}, len(cs))
 	for i, c := range cs {

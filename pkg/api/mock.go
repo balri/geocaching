@@ -26,11 +26,12 @@ type mockSheet struct {
 	ExtendFilterCalled      bool
 }
 
-func (m *mockSheet) AppendRows(rows [][]interface{}) {
+func (m *mockSheet) AppendRows(rows [][]interface{}) error {
 	m.AppendRowsCalls = append(m.AppendRowsCalls, rows...)
+	return nil
 }
-func (m *mockSheet) UpdateRow(rowIndex int, row []interface{}) error {
-	m.UpdateRowCalls = append(m.UpdateRowCalls, sheets.RowWithIndex{Index: rowIndex, Row: row})
+func (m *mockSheet) UpdateRows(updates []sheets.RowWithIndex) error {
+	m.UpdateRowCalls = append(m.UpdateRowCalls, updates...)
 	return nil
 }
 func (m *mockSheet) GetExistingRows() map[string]sheets.RowWithIndex {

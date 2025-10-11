@@ -31,44 +31,61 @@ func NewSheetClient(jsonPath, spreadsheetID, sheetName string) *SheetClient {
 	}
 }
 
-func (s *SheetClient) UpdateRow(rowIndex int, row []interface{}) error {
+func (s *SheetClient) UpdateRows(updates []RowWithIndex) error {
 	ctx := context.Background()
-	_, err := s.service.Spreadsheets.Values.Update(
-		s.spreadsheetID,
-		fmt.Sprintf("%s!A%d:Z%d", s.sheetName, rowIndex+1, rowIndex+1),
-		&sheets.ValueRange{Values: [][]interface{}{row}},
-	).ValueInputOption("USER_ENTERED").Context(ctx).Do()
-	return err
+	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+	var sheetID int64 = -1
+	for _, sh := range ss.Sheets {
+		if sh.Properties.Title == s.sheetName {
+			sheetID = sh.Properties.SheetId
+			break
+		}
+	}
+	if sheetID == -1 {
+		return fmt.Errorf("sheet not found")
+	}
+
+	var requests []*sheets.Request
+	for _, upd := range updates {
+		req := &sheets.Request{
+			UpdateCells: &sheets.UpdateCellsRequest{
+				Range: &sheets.GridRange{
+					SheetId:          sheetID,
+					StartRowIndex:    int64(upd.Index),
+					EndRowIndex:      int64(upd.Index + 1),
+					StartColumnIndex: 0,
+					EndColumnIndex:   int64(len(upd.Row)),
+				},
+				Rows: []*sheets.RowData{
+					{Values: toCellData(upd.Row)},
+				},
+				Fields: "*",
+			},
+		}
+		requests = append(requests, req)
+	}
+
+	return withBackoff(func() error {
+		_, err := s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: requests,
+		}).Context(ctx).Do()
+		return err
+	})
 }
 
-func (s *SheetClient) AppendRows(rows [][]interface{}) {
+func (s *SheetClient) AppendRows(rows [][]interface{}) error {
 	ctx := context.Background()
-	var err error
-	maxRetries := 15
-	maxBackoff := 60 * time.Second
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		_, err = s.service.Spreadsheets.Values.Append(
+	return withBackoff(func() error {
+		_, err := s.service.Spreadsheets.Values.Append(
 			s.spreadsheetID,
 			s.sheetName+"!A:Z",
 			&sheets.ValueRange{Values: rows},
 		).ValueInputOption("USER_ENTERED").InsertDataOption("INSERT_ROWS").Context(ctx).Do()
-		if err == nil {
-			return
-		}
-		// Check for rate limit error
-		if gErr, ok := err.(*googleapi.Error); ok && (gErr.Code == 429 || gErr.Code == 403) {
-			backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-			log.Printf("Rate limited by Google Sheets API, retrying in %v...", backoff)
-			time.Sleep(backoff)
-			continue
-		}
-		log.Printf("Failed to append rows: %v", err)
-		return
-	}
-	log.Printf("Failed to append rows after %d retries: %v", maxRetries, err)
+		return err
+	})
 }
 
 type RowWithIndex struct {
@@ -223,8 +240,69 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 			},
 		},
 	}
+
+	placedDateReq := &sheets.Request{
+		RepeatCell: &sheets.RepeatCellRequest{
+			Range: &sheets.GridRange{
+				SheetId:          sheetID,
+				StartRowIndex:    1, // skip header
+				StartColumnIndex: 6, // Placed Date column (G = 6)
+				EndColumnIndex:   7,
+			},
+			Cell: &sheets.CellData{
+				UserEnteredFormat: &sheets.CellFormat{
+					NumberFormat: &sheets.NumberFormat{
+						Type:    "DATE",
+						Pattern: "dd/mm/yyyy",
+					},
+				},
+			},
+			Fields: "userEnteredFormat.numberFormat",
+		},
+	}
+
 	_, err = s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-		Requests: []*sheets.Request{filterReq},
+		Requests: []*sheets.Request{filterReq, placedDateReq},
 	}).Context(ctx).Do()
 	return err
+}
+
+func toCellData(row []interface{}) []*sheets.CellData {
+	cells := make([]*sheets.CellData, len(row))
+	for i, v := range row {
+		cells[i] = &sheets.CellData{UserEnteredValue: &sheets.ExtendedValue{}}
+		switch val := v.(type) {
+		case string:
+			if len(val) > 0 && val[0] == '=' {
+				cells[i].UserEnteredValue.FormulaValue = &val
+			} else {
+				cells[i].UserEnteredValue.StringValue = &val
+			}
+		case float64:
+			cells[i].UserEnteredValue.NumberValue = &val
+		}
+	}
+	return cells
+}
+
+func withBackoff(call func() error) error {
+	maxRetries := 15
+	maxBackoff := 60 * time.Second
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := call()
+		if err == nil {
+			return nil
+		}
+		if gErr, ok := err.(*googleapi.Error); ok && (gErr.Code == 429 || gErr.Code == 403) {
+			backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+			log.Printf("Rate limited by Google Sheets API, retrying in %v...", backoff)
+			time.Sleep(backoff)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("failed after %d retries", maxRetries)
 }

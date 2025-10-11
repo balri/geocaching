@@ -207,10 +207,7 @@ func runSolved(
 
 	existingRows := rowsToCacheRows(sheet.GetExistingRows())
 	var rowsToAppend CacheRows
-	var rowsToUpdate []struct {
-		RowIndex int
-		RowData  CacheRow
-	}
+	var rowsToUpdate []sheets.RowWithIndex
 
 	rowsUpdated := 0
 	rowsAdded := 0
@@ -277,10 +274,10 @@ func runSolved(
 			// Compare row slices
 			if !rowsEqual(row, existing) {
 				log.Debug("index: ", existing.Index, " - updating row for cache ", cache.Code)
-				rowsToUpdate = append(rowsToUpdate, struct {
-					RowIndex int
-					RowData  CacheRow
-				}{RowIndex: existing.Index, RowData: row})
+				rowsToUpdate = append(rowsToUpdate, sheets.RowWithIndex{
+					Index: existing.Index,
+					Row:   row.ToRowForUpdate(),
+				})
 				rowsUpdated++
 			}
 		} else {
@@ -288,15 +285,27 @@ func runSolved(
 			rowsAdded++
 		}
 
+		if len(rowsToUpdate) >= batchSize {
+			err := sheet.UpdateRows(rowsToUpdate)
+			if err != nil {
+				log.Printf("Failed to update rows: %v", err)
+			}
+			rowsToUpdate = []sheets.RowWithIndex{}
+		}
+
 		if len(rowsToAppend) >= batchSize {
-			sheet.AppendRows(rowsToAppend.ToRows())
+			err := sheet.AppendRows(rowsToAppend.ToRows())
+			if err != nil {
+				log.Printf("Failed to append rows: %v", err)
+			}
 			rowsToAppend = []CacheRow{}
 		}
 	}
 
-	for _, update := range rowsToUpdate {
-		sheet.UpdateRow(update.RowIndex, update.RowData.ToRow())
+	if len(rowsToUpdate) > 0 {
+		sheet.UpdateRows(rowsToUpdate)
 	}
+
 	if len(rowsToAppend) > 0 {
 		sheet.AppendRows(rowsToAppend.ToRows())
 	}
@@ -312,62 +321,77 @@ func runSolved(
 	return nil
 }
 
-// Check if two CacheRow entries are equal (ignoring Note)
+// Check if two CacheRow entries are equal
 func rowsEqual(a, b CacheRow) bool {
+	normalizeDate := func(s string) string {
+		// Try to parse as date and format as yyyy-mm-dd
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			return t.Format("2006-01-02")
+		}
+		return s
+	}
+	normalizeFloat := func(s string, decimals int) string {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return fmt.Sprintf("%.*f", decimals, f)
+		}
+		return s
+	}
+	normalizeHalf := func(s string) string {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return fmt.Sprintf("%g", f)
+		}
+		return s
+	}
+
 	if a.Name != b.Name {
-		log.Debug("Name differs:", a.Name, b.Name)
 		return false
 	}
 	if a.Favorite != b.Favorite {
-		log.Debug("Favorite differs:", a.Favorite, b.Favorite)
 		return false
 	}
 	if a.PostedCoords != b.PostedCoords {
-		log.Debug("PostedCoords differs:", a.PostedCoords, b.PostedCoords)
 		return false
 	}
 	if a.CorrectedCoords != b.CorrectedCoords {
-		log.Debug("CorrectedCoords differs:", a.CorrectedCoords, b.CorrectedCoords)
 		return false
 	}
-	if a.Distance != b.Distance {
-		log.Debug("Distance differs:", a.Distance, b.Distance)
+	if normalizeFloat(a.Distance, 2) != normalizeFloat(b.Distance, 2) {
 		return false
 	}
-	if a.PlacedDate != b.PlacedDate {
-		log.Debug("PlacedDate differs:", a.PlacedDate, b.PlacedDate)
+	if normalizeDate(a.PlacedDate) != normalizeDate(b.PlacedDate) {
+		log.Debugf("PlacedDate differs: '%s' vs '%s'", a.PlacedDate, b.PlacedDate)
 		return false
 	}
 	if a.CacheType != b.CacheType {
-		log.Debug("CacheType differs:", a.CacheType, b.CacheType)
 		return false
 	}
 	if a.CacheSize != b.CacheSize {
-		log.Debug("CacheSize differs:", a.CacheSize, b.CacheSize)
 		return false
 	}
-	if a.Difficulty != b.Difficulty {
-		log.Debug("Difficulty differs:", a.Difficulty, b.Difficulty)
+	if normalizeHalf(a.Difficulty) != normalizeHalf(b.Difficulty) {
 		return false
 	}
-	if a.Terrain != b.Terrain {
-		log.Debug("Terrain differs:", a.Terrain, b.Terrain)
+	if normalizeHalf(a.Terrain) != normalizeHalf(b.Terrain) {
 		return false
 	}
 	if a.Owner != b.Owner {
-		log.Debug("Owner differs:", a.Owner, b.Owner)
 		return false
 	}
 	if a.Region != b.Region {
-		log.Debug("Region differs:", a.Region, b.Region)
 		return false
 	}
 	if a.Country != b.Country {
-		log.Debug("Country differs:", a.Country, b.Country)
 		return false
 	}
 	if a.Found != b.Found {
-		log.Debug("Found differs:", a.Found, b.Found)
+		return false
+	}
+	if a.Note == "" && b.Note != "" {
+		log.Debug("Note differs: empty vs non-empty")
+		return false
+	}
+	if a.Note != "" && b.Note == "" {
+		log.Debug("Note differs: non-empty vs empty")
 		return false
 	}
 	return true
