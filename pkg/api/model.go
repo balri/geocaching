@@ -18,7 +18,6 @@ type CacheRow struct {
 	Index           int
 	Code            string
 	Name            string
-	Favorite        string
 	PostedCoords    string
 	CorrectedCoords string
 	Distance        string
@@ -28,8 +27,6 @@ type CacheRow struct {
 	Difficulty      string
 	Terrain         string
 	Owner           string
-	Region          string
-	Country         string
 	Found           string
 	Note            string
 	DateUpdated     string
@@ -66,20 +63,17 @@ func rowToCacheRow(row sheets.RowWithIndex) CacheRow {
 		Index:           row.Index,
 		Code:            get(0),
 		Name:            get(1),
-		Favorite:        get(2),
-		PostedCoords:    get(3),
-		CorrectedCoords: get(4),
-		Distance:        getDistance(5),
-		PlacedDate:      convertDateToISO(get(6)),
-		CacheType:       get(7),
-		CacheSize:       get(8),
-		Difficulty:      get(9),
-		Terrain:         get(10),
-		Owner:           get(11),
-		Region:          get(12),
-		Country:         get(13),
-		Found:           get(14),
-		Note:            get(15),
+		PostedCoords:    get(2),
+		CorrectedCoords: get(3),
+		Distance:        getDistance(4),
+		PlacedDate:      convertDateToISO(get(5)),
+		CacheType:       get(6),
+		CacheSize:       get(7),
+		Difficulty:      get(8),
+		Terrain:         get(9),
+		Owner:           get(10),
+		Found:           get(11),
+		Note:            get(12),
 	}
 }
 
@@ -95,7 +89,6 @@ func (c CacheRow) ToRow() []interface{} {
 	return []interface{}{
 		c.Code,
 		"'" + c.Name,
-		c.Favorite,
 		c.PostedCoords,
 		c.CorrectedCoords,
 		c.Distance,
@@ -105,8 +98,6 @@ func (c CacheRow) ToRow() []interface{} {
 		c.Difficulty,
 		c.Terrain,
 		"'" + c.Owner,
-		c.Region,
-		c.Country,
 		c.Found,
 		"'" + c.Note,
 		c.DateUpdated,
@@ -115,7 +106,6 @@ func (c CacheRow) ToRow() []interface{} {
 
 func (c CacheRow) ToRowForUpdate() []interface{} {
 	// Convert numeric fields to float64
-	fav, _ := strconv.ParseFloat(c.Favorite, 64)
 	dist, _ := strconv.ParseFloat(c.Distance, 64)
 	diff, _ := strconv.ParseFloat(c.Difficulty, 64)
 	terr, _ := strconv.ParseFloat(c.Terrain, 64)
@@ -130,7 +120,6 @@ func (c CacheRow) ToRowForUpdate() []interface{} {
 	return []interface{}{
 		c.Code,
 		c.Name,
-		fav,
 		c.PostedCoords,
 		c.CorrectedCoords,
 		dist,
@@ -140,8 +129,6 @@ func (c CacheRow) ToRowForUpdate() []interface{} {
 		diff,
 		terr,
 		c.Owner,
-		c.Region,
-		c.Country,
 		c.Found,
 		c.Note,
 		c.DateUpdated,

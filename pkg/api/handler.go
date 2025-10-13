@@ -71,7 +71,6 @@ var cacheSizes = map[cacheodon.CacheSize]string{
 var headerRow = []interface{}{
 	"Code",
 	"Name",
-	"Fav",
 	"Original Coords",
 	"Corrected Coords",
 	"Distance",
@@ -81,11 +80,9 @@ var headerRow = []interface{}{
 	"Diff",
 	"Terr",
 	"Owner",
-	"Region",
-	"Country",
 	"Found",
 	"Note",
-	"Date Updated",
+	"Updated",
 }
 
 // BoolPtr returns a pointer to the given bool value.
@@ -253,7 +250,6 @@ func runSolved(
 		row := CacheRow{
 			Code:            link,
 			Name:            cache.Name,
-			Favorite:        strconv.Itoa(cache.FavoritePoints),
 			PostedCoords:    postedCoords,
 			CorrectedCoords: correctedCoords,
 			Distance:        fmt.Sprintf("%.2f", distance),
@@ -263,8 +259,6 @@ func runSolved(
 			Difficulty:      fmt.Sprintf("%g", cache.Difficulty),
 			Terrain:         fmt.Sprintf("%g", cache.Terrain),
 			Owner:           cache.Owner.Username,
-			Region:          cache.Region,
-			Country:         cache.Country,
 			Found:           cacheFound,
 			Note:            note,
 			DateUpdated:     nowFunc().Format("2006-01-02 15:04:05"),
@@ -346,9 +340,6 @@ func rowsEqual(a, b CacheRow) bool {
 	if a.Name != b.Name {
 		return false
 	}
-	if a.Favorite != b.Favorite {
-		return false
-	}
 	if a.PostedCoords != b.PostedCoords {
 		return false
 	}
@@ -375,12 +366,6 @@ func rowsEqual(a, b CacheRow) bool {
 		return false
 	}
 	if a.Owner != b.Owner {
-		return false
-	}
-	if a.Region != b.Region {
-		return false
-	}
-	if a.Country != b.Country {
 		return false
 	}
 	if a.Found != b.Found {
