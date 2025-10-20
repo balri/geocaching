@@ -241,13 +241,14 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 		},
 	}
 
+	placedDateIdx := int64(int(ColumnPlacedDate))
 	placedDateReq := &sheets.Request{
 		RepeatCell: &sheets.RepeatCellRequest{
 			Range: &sheets.GridRange{
 				SheetId:          sheetID,
 				StartRowIndex:    1, // skip header
-				StartColumnIndex: 6, // Placed Date column (G = 6)
-				EndColumnIndex:   7,
+				StartColumnIndex: placedDateIdx,
+				EndColumnIndex:   placedDateIdx + 1,
 			},
 			Cell: &sheets.CellData{
 				UserEnteredFormat: &sheets.CellFormat{
@@ -261,8 +262,29 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 		},
 	}
 
+	updatedDateIdx := int64(int(ColumnDateUpdated))
+	updatedDateReq := &sheets.Request{
+		RepeatCell: &sheets.RepeatCellRequest{
+			Range: &sheets.GridRange{
+				SheetId:          sheetID,
+				StartRowIndex:    1, // skip header
+				StartColumnIndex: updatedDateIdx,
+				EndColumnIndex:   updatedDateIdx + 1,
+			},
+			Cell: &sheets.CellData{
+				UserEnteredFormat: &sheets.CellFormat{
+					NumberFormat: &sheets.NumberFormat{
+						Type:    "DATE_TIME",
+						Pattern: "dd/mm/yy hh:mm:ss",
+					},
+				},
+			},
+			Fields: "userEnteredFormat.numberFormat",
+		},
+	}
+
 	_, err = s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-		Requests: []*sheets.Request{filterReq, placedDateReq},
+		Requests: []*sheets.Request{filterReq, placedDateReq, updatedDateReq},
 	}).Context(ctx).Do()
 	return err
 }

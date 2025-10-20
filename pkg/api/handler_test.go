@@ -239,7 +239,7 @@ func TestRunSolved(t *testing.T) {
 						"Owner",
 						"Yes",
 						"Old Note",
-						"2025-10-11 05:58:35",
+						float64(45941.24901620371), // 2025-10-11 05:58:35 in Excel date format,
 					},
 				},
 			},

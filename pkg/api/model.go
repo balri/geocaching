@@ -61,19 +61,19 @@ func rowToCacheRow(row sheets.RowWithIndex) CacheRow {
 
 	return CacheRow{
 		Index:           row.Index,
-		Code:            get(0),
-		Name:            get(1),
-		PostedCoords:    get(2),
-		CorrectedCoords: get(3),
-		Distance:        getDistance(4),
-		PlacedDate:      convertDateToISO(get(5)),
-		CacheType:       get(6),
-		CacheSize:       get(7),
-		Difficulty:      get(8),
-		Terrain:         get(9),
-		Owner:           get(10),
-		Found:           get(11),
-		Note:            get(12),
+		Code:            get(int(sheets.ColumnCode)),
+		Name:            get(int(sheets.ColumnName)),
+		PostedCoords:    get(int(sheets.ColumnPostedCoords)),
+		CorrectedCoords: get(int(sheets.ColumnCorrectedCoords)),
+		Distance:        getDistance(int(sheets.ColumnDistance)),
+		PlacedDate:      convertDateToISO(get(int(sheets.ColumnPlacedDate))),
+		CacheType:       get(int(sheets.ColumnCacheType)),
+		CacheSize:       get(int(sheets.ColumnCacheSize)),
+		Difficulty:      get(int(sheets.ColumnDifficulty)),
+		Terrain:         get(int(sheets.ColumnTerrain)),
+		Owner:           get(int(sheets.ColumnOwner)),
+		Found:           get(int(sheets.ColumnFound)),
+		Note:            get(int(sheets.ColumnNote)),
 	}
 }
 
@@ -105,16 +105,20 @@ func (c CacheRow) ToRow() []interface{} {
 }
 
 func (c CacheRow) ToRowForUpdate() []interface{} {
-	// Convert numeric fields to float64
 	dist, _ := strconv.ParseFloat(c.Distance, 64)
 	diff, _ := strconv.ParseFloat(c.Difficulty, 64)
 	terr, _ := strconv.ParseFloat(c.Terrain, 64)
 
-	// Convert PlacedDate to serial number if possible
 	var placedDate interface{} = c.PlacedDate
 	if t, err := time.Parse("2006-01-02", c.PlacedDate); err == nil {
 		base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
 		placedDate = t.Sub(base).Hours() / 24
+	}
+
+	var dateUpdated interface{} = c.DateUpdated
+	if t, err := time.Parse("2006-01-02 15:04:05", c.DateUpdated); err == nil {
+		base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
+		dateUpdated = t.Sub(base).Hours() / 24
 	}
 
 	return []interface{}{
@@ -131,7 +135,7 @@ func (c CacheRow) ToRowForUpdate() []interface{} {
 		c.Owner,
 		c.Found,
 		c.Note,
-		c.DateUpdated,
+		dateUpdated,
 	}
 }
 
