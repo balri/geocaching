@@ -25,4 +25,5 @@ const (
 	ColumnFound           colIdx = 11
 	ColumnNote            colIdx = 12
 	ColumnDateUpdated     colIdx = 13
+	ColumnChangeLog       colIdx = 14
 )

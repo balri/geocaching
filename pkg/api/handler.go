@@ -83,6 +83,7 @@ var headerRow = []interface{}{
 	"Found",
 	"Note",
 	"Updated",
+	"Change Log",
 }
 
 // BoolPtr returns a pointer to the given bool value.
@@ -265,12 +266,11 @@ func runSolved(
 		}
 
 		if exists {
-			// Compare row slices
-			if !rowsEqual(row, existing) {
-				log.Debug("index: ", existing.Index, " - updating row for cache ", cache.Code)
+			isEqual, changeLog := rowsEqual(row, existing)
+			if !isEqual {
 				rowsToUpdate = append(rowsToUpdate, sheets.RowWithIndex{
 					Index: existing.Index,
-					Row:   row.ToRowForUpdate(),
+					Row:   row.ToRowForUpdate(changeLog),
 				})
 				rowsUpdated++
 			}
@@ -316,7 +316,7 @@ func runSolved(
 }
 
 // Check if two CacheRow entries are equal
-func rowsEqual(a, b CacheRow) bool {
+func rowsEqual(a, b CacheRow) (isEqual bool, changeLog []string) {
 	normalizeDate := func(s string) string {
 		// Try to parse as date and format as yyyy-mm-dd
 		if t, err := time.Parse("2006-01-02", s); err == nil {
@@ -337,49 +337,69 @@ func rowsEqual(a, b CacheRow) bool {
 		return s
 	}
 
+	isEqual = true
+	changeLog = []string{}
 	if a.Name != b.Name {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "Name changed from '"+a.Name+"'")
 	}
 	if a.PostedCoords != b.PostedCoords {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "PostedCoords changed from '"+a.PostedCoords+"'")
 	}
 	if a.CorrectedCoords != b.CorrectedCoords {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "CorrectedCoords changed from '"+a.CorrectedCoords+"'")
 	}
-	if normalizeFloat(a.Distance, 2) != normalizeFloat(b.Distance, 2) {
-		return false
+	aDistance := normalizeFloat(a.Distance, 2)
+	bDistance := normalizeFloat(b.Distance, 2)
+	if aDistance != bDistance {
+		isEqual = false
+		changeLog = append(changeLog, "Distance changed from '"+aDistance+"'")
 	}
-	if normalizeDate(a.PlacedDate) != normalizeDate(b.PlacedDate) {
-		log.Debugf("PlacedDate differs: '%s' vs '%s'", a.PlacedDate, b.PlacedDate)
-		return false
+	aPlacedDate := normalizeDate(a.PlacedDate)
+	bPlacedDate := normalizeDate(b.PlacedDate)
+	if aPlacedDate != bPlacedDate {
+		isEqual = false
+		changeLog = append(changeLog, "PlacedDate changed from '"+aPlacedDate+"'")
 	}
 	if a.CacheType != b.CacheType {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "CacheType changed from '"+a.CacheType+"'")
 	}
 	if a.CacheSize != b.CacheSize {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "CacheSize changed from '"+a.CacheSize+"'")
 	}
-	if normalizeHalf(a.Difficulty) != normalizeHalf(b.Difficulty) {
-		return false
+	aDifficulty := normalizeHalf(a.Difficulty)
+	bDifficulty := normalizeHalf(b.Difficulty)
+	if aDifficulty != bDifficulty {
+		isEqual = false
+		changeLog = append(changeLog, "Difficulty changed from '"+aDifficulty+"'")
 	}
-	if normalizeHalf(a.Terrain) != normalizeHalf(b.Terrain) {
-		return false
+	aTerrain := normalizeHalf(a.Terrain)
+	bTerrain := normalizeHalf(b.Terrain)
+	if aTerrain != bTerrain {
+		isEqual = false
+		changeLog = append(changeLog, "Terrain changed from '"+aTerrain+"'")
 	}
 	if a.Owner != b.Owner {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "Owner changed from '"+a.Owner+"'")
 	}
 	if a.Found != b.Found {
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "Found changed from '"+a.Found+"'")
 	}
 	if a.Note == "" && b.Note != "" {
-		log.Debug("Note differs: empty vs non-empty")
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "Note changed from empty to non-empty")
 	}
 	if a.Note != "" && b.Note == "" {
-		log.Debug("Note differs: non-empty vs empty")
-		return false
+		isEqual = false
+		changeLog = append(changeLog, "Note changed from non-empty to empty")
 	}
-	return true
+	return isEqual, changeLog
 }
 
 func RunSolvedSyncForRegion(regionID string) error {

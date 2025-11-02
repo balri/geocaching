@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"geocaching/pkg/sheets"
 	"strconv"
+	"strings"
 	"time"
 
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
@@ -30,6 +31,7 @@ type CacheRow struct {
 	Found           string
 	Note            string
 	DateUpdated     string
+	ChangeLog       string
 }
 
 type CacheRows []CacheRow
@@ -101,10 +103,11 @@ func (c CacheRow) ToRow() []interface{} {
 		c.Found,
 		"'" + c.Note,
 		c.DateUpdated,
+		"",
 	}
 }
 
-func (c CacheRow) ToRowForUpdate() []interface{} {
+func (c CacheRow) ToRowForUpdate(changeLog []string) []interface{} {
 	dist, _ := strconv.ParseFloat(c.Distance, 64)
 	diff, _ := strconv.ParseFloat(c.Difficulty, 64)
 	terr, _ := strconv.ParseFloat(c.Terrain, 64)
@@ -136,6 +139,7 @@ func (c CacheRow) ToRowForUpdate() []interface{} {
 		c.Found,
 		c.Note,
 		dateUpdated,
+		strings.Join(changeLog, "; "),
 	}
 }
 

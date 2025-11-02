@@ -81,29 +81,93 @@ func TestRowsEqual(t *testing.T) {
 		DateUpdated:     now,
 	}
 	tests := []struct {
-		b    CacheRow
-		want bool
+		b             CacheRow
+		wantIsEqual   bool
+		wantChangeLog []string
 	}{
-		{func() CacheRow { b := a; return b }(), true},
-		{func() CacheRow { b := a; b.Code = "Different"; return b }(), true},
-		{func() CacheRow { b := a; b.Name = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.PostedCoords = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.CorrectedCoords = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Distance = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.PlacedDate = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.CacheType = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.CacheSize = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Difficulty = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Terrain = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Owner = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Found = "Different"; return b }(), false},
-		{func() CacheRow { b := a; b.Note = "Different"; return b }(), true},
-		{func() CacheRow { b := a; b.DateUpdated = "Different"; return b }(), true},
+		{
+			b:             func() CacheRow { b := a; return b }(),
+			wantIsEqual:   true,
+			wantChangeLog: []string{},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Code = "Different"; return b }(),
+			wantIsEqual:   true,
+			wantChangeLog: []string{},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Name = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Name changed from 'Test'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.PostedCoords = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"PostedCoords changed from 'S27 07.407 E153 39.259'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.CorrectedCoords = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"CorrectedCoords changed from 'S27 07.407 E153 39.259'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Distance = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Distance changed from '1.23'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.PlacedDate = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"PlacedDate changed from '2024-07-01'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.CacheType = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"CacheType changed from 'Traditional'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.CacheSize = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"CacheSize changed from 'Regular'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Difficulty = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Difficulty changed from '2'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Terrain = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Terrain changed from '1.5'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Owner = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Owner changed from 'Owner'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Found = "Different"; return b }(),
+			wantIsEqual:   false,
+			wantChangeLog: []string{"Found changed from 'Yes'"},
+		},
+		{
+			b:             func() CacheRow { b := a; b.Note = "Different"; return b }(),
+			wantIsEqual:   true,
+			wantChangeLog: []string{},
+		},
+		{
+			b:             func() CacheRow { b := a; b.DateUpdated = "Different"; return b }(),
+			wantIsEqual:   true,
+			wantChangeLog: []string{},
+		},
 	}
 	for _, tt := range tests {
-		got := rowsEqual(a, tt.b)
-		if got != tt.want {
-			t.Errorf("rowsEqual(a, b) = %v, want %v", got, tt.want)
+		gotIsEqual, gotChangeLog := rowsEqual(a, tt.b)
+		if gotIsEqual != tt.wantIsEqual {
+			t.Errorf("rowsEqual(a, b) = %v, want %v", gotIsEqual, tt.wantIsEqual)
+		}
+		if fmt.Sprint(gotChangeLog) != fmt.Sprint(tt.wantChangeLog) {
+			t.Errorf("rowsEqual(a, b) changeLog = %v, want %v", gotChangeLog, tt.wantChangeLog)
 		}
 	}
 }
@@ -240,6 +304,7 @@ func TestRunSolved(t *testing.T) {
 						"Yes",
 						"Old Note",
 						float64(45941.24901620371), // 2025-10-11 05:58:35 in Excel date format,
+						"Name changed from 'Test Cache'; PostedCoords changed from 'S27 07.407 E153 39.259'; CorrectedCoords changed from 'S27 14.074 E153 45.926'; Distance changed from '77.60'; PlacedDate changed from '2024-07-01'; Owner changed from 'Owner'; Found changed from 'Yes'",
 					},
 				},
 			},
@@ -342,6 +407,7 @@ func TestRunSolved(t *testing.T) {
 					"Yes",
 					"'",
 					"2025-10-11 05:58:35",
+					"",
 				},
 			},
 		},
@@ -401,6 +467,7 @@ func TestRunSolved(t *testing.T) {
 					"Yes",
 					"'ROT-47 cipher",
 					"2025-10-11 05:58:35",
+					"",
 				},
 			},
 		},
