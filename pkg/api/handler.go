@@ -341,63 +341,65 @@ func rowsEqual(a, b CacheRow) (isEqual bool, changeLog []string) {
 	changeLog = []string{}
 	if a.Name != b.Name {
 		isEqual = false
-		changeLog = append(changeLog, "Name changed from '"+a.Name+"'")
+		changeLog = append(changeLog, "Name changed from '"+b.Name+"'")
 	}
 	if a.PostedCoords != b.PostedCoords {
 		isEqual = false
-		changeLog = append(changeLog, "PostedCoords changed from '"+a.PostedCoords+"'")
+		changeLog = append(changeLog, "Posted Coords changed from '"+b.PostedCoords+"'")
 	}
 	if a.CorrectedCoords != b.CorrectedCoords {
 		isEqual = false
-		changeLog = append(changeLog, "CorrectedCoords changed from '"+a.CorrectedCoords+"'")
+		changeLog = append(changeLog, "Corrected Coords changed from '"+b.CorrectedCoords+"'")
 	}
 	aDistance := normalizeFloat(a.Distance, 2)
 	bDistance := normalizeFloat(b.Distance, 2)
 	if aDistance != bDistance {
 		isEqual = false
-		changeLog = append(changeLog, "Distance changed from '"+aDistance+"'")
+		changeLog = append(changeLog, "Distance changed from '"+bDistance+"'")
 	}
 	aPlacedDate := normalizeDate(a.PlacedDate)
 	bPlacedDate := normalizeDate(b.PlacedDate)
 	if aPlacedDate != bPlacedDate {
 		isEqual = false
-		changeLog = append(changeLog, "PlacedDate changed from '"+aPlacedDate+"'")
+		changeLog = append(changeLog, "Placed Date changed from '"+bPlacedDate+"'")
 	}
 	if a.CacheType != b.CacheType {
 		isEqual = false
-		changeLog = append(changeLog, "CacheType changed from '"+a.CacheType+"'")
+		changeLog = append(changeLog, "Type changed from '"+b.CacheType+"'")
 	}
 	if a.CacheSize != b.CacheSize {
 		isEqual = false
-		changeLog = append(changeLog, "CacheSize changed from '"+a.CacheSize+"'")
+		changeLog = append(changeLog, "Size changed from '"+b.CacheSize+"'")
 	}
 	aDifficulty := normalizeHalf(a.Difficulty)
 	bDifficulty := normalizeHalf(b.Difficulty)
 	if aDifficulty != bDifficulty {
 		isEqual = false
-		changeLog = append(changeLog, "Difficulty changed from '"+aDifficulty+"'")
+		changeLog = append(changeLog, "Difficulty changed from '"+bDifficulty+"'")
 	}
 	aTerrain := normalizeHalf(a.Terrain)
 	bTerrain := normalizeHalf(b.Terrain)
 	if aTerrain != bTerrain {
 		isEqual = false
-		changeLog = append(changeLog, "Terrain changed from '"+aTerrain+"'")
+		changeLog = append(changeLog, "Terrain changed from '"+bTerrain+"'")
 	}
 	if a.Owner != b.Owner {
 		isEqual = false
-		changeLog = append(changeLog, "Owner changed from '"+a.Owner+"'")
+		changeLog = append(changeLog, "Owner changed from '"+b.Owner+"'")
 	}
-	if a.Found != b.Found {
+	if a.Found != b.Found && a.Found != "" {
 		isEqual = false
-		changeLog = append(changeLog, "Found changed from '"+a.Found+"'")
+		changeLog = append(changeLog, "Found changed to '"+a.Found+"'")
+	} else if a.Found != b.Found && b.Found != "" {
+		isEqual = false
+		changeLog = append(changeLog, "Found changed from '"+b.Found+"'")
 	}
 	if a.Note == "" && b.Note != "" {
 		isEqual = false
-		changeLog = append(changeLog, "Note changed from empty to non-empty")
-	}
-	if a.Note != "" && b.Note == "" {
-		isEqual = false
 		changeLog = append(changeLog, "Note changed from non-empty to empty")
+	} else if a.Note != "" && b.Note == "" {
+		isEqual = false
+		changeLog = append(changeLog, "Note changed from empty to non-empty")
 	}
 	return isEqual, changeLog
 }
