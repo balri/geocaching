@@ -3,7 +3,7 @@ module geocaching
 go 1.24.7
 
 require (
-	github.com/balri/cacheodon v0.2.5
+	github.com/balri/cacheodon v0.2.6
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/api v0.249.0
