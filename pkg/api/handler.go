@@ -242,6 +242,7 @@ func runSolved(
 		if exists && existing.Note != "" {
 			note = fmt.Sprint(existing.Note)
 		} else if cache.HasCallerNote {
+			log.Printf("Getting cache description for %s", cache.Code)
 			note, err = api.GetCacheNoteForGeocache(cache)
 			if err != nil {
 				note = ""
