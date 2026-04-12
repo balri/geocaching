@@ -241,12 +241,12 @@ func runSolved(
 		var note string
 		if exists && existing.Note != "" {
 			note = fmt.Sprint(existing.Note)
-		} else if cache.HasCallerNote {
-			log.Printf("Getting cache description for %s", cache.Code)
-			note, err = api.GetCacheNoteForGeocache(cache)
-			if err != nil {
-				note = ""
-			}
+			// } else if cache.HasCallerNote {
+			// 	log.Printf("Getting cache description for %s", cache.Code)
+			// 	note, err = api.GetCacheNoteForGeocache(cache)
+			// 	if err != nil {
+			// 		note = ""
+			// 	}
 		}
 
 		row := CacheRow{
@@ -395,13 +395,13 @@ func rowsEqual(a, b CacheRow) (isEqual bool, changeLog []string) {
 		isEqual = false
 		changeLog = append(changeLog, "Found changed from '"+b.Found+"'")
 	}
-	if a.Note == "" && b.Note != "" {
-		isEqual = false
-		changeLog = append(changeLog, "Note changed from non-empty to empty")
-	} else if a.Note != "" && b.Note == "" {
-		isEqual = false
-		changeLog = append(changeLog, "Note changed from empty to non-empty")
-	}
+	// if a.Note == "" && b.Note != "" {
+	// 	isEqual = false
+	// 	changeLog = append(changeLog, "Note changed from non-empty to empty")
+	// } else if a.Note != "" && b.Note == "" {
+	// 	isEqual = false
+	// 	changeLog = append(changeLog, "Note changed from empty to non-empty")
+	// }
 	return isEqual, changeLog
 }
 
