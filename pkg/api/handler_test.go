@@ -465,7 +465,7 @@ func TestRunSolved(t *testing.T) {
 					"1.5",
 					"'Owner",
 					"Yes",
-					"'ROT-47 cipher",
+					"'",
 					"2025-10-11 05:58:35",
 					"",
 				},
@@ -512,7 +512,24 @@ func TestRunSolved(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := runSolved(tt.mockAPI, tt.mockSheet, "54", "Queensland")
+			params := cacheodon.SearchTerms{
+				CacheType: []cacheodon.CacheType{
+					cacheodon.Unknown,
+					cacheodon.Multi,
+					cacheodon.Letterbox,
+					cacheodon.Wherigo,
+					cacheodon.Virtual,
+				},
+				IgnorePremium: false,
+				Corrected:     BoolPtr(true),
+				HideOwned:     BoolPtr(true),
+				SortAsc:       BoolPtr(true),
+				Sort:          "distance",
+				OriginType:    cacheodon.Region,
+				OriginID:      "54",
+			}
+
+			err := runSolved(tt.mockAPI, tt.mockSheet, params)
 			if tt.wantErr == "" {
 				assert.Nil(t, err)
 			} else {

@@ -178,25 +178,8 @@ func getCaches(
 func runSolved(
 	api GeocachingAPI,
 	sheet sheets.SheetWriter,
-	regionID, region string,
+	params cacheodon.SearchTerms,
 ) error {
-	params := cacheodon.SearchTerms{
-		CacheType: []cacheodon.CacheType{
-			cacheodon.Unknown,
-			cacheodon.Multi,
-			cacheodon.Letterbox,
-			cacheodon.Wherigo,
-			cacheodon.Virtual,
-		},
-		IgnorePremium: false,
-		Corrected:     BoolPtr(true),
-		HideOwned:     BoolPtr(true),
-		SortAsc:       BoolPtr(true),
-		Sort:          "distance",
-		OriginType:    cacheodon.Region,
-		OriginID:      regionID,
-	}
-
 	caches, err := getCaches(api, params)
 	if err != nil {
 		return err
@@ -422,7 +405,49 @@ func RunSolvedSyncForRegion(regionID string) error {
 		return err
 	}
 
-	return runSolved(api, sheet, regionID, region)
+	unfoundParams := cacheodon.SearchTerms{
+		CacheType: []cacheodon.CacheType{
+			cacheodon.Unknown,
+			cacheodon.Multi,
+			cacheodon.Letterbox,
+			cacheodon.Wherigo,
+			cacheodon.Virtual,
+		},
+		IgnorePremium: false,
+		Corrected:     BoolPtr(true),
+		HideOwned:     BoolPtr(true),
+		HideFound:     BoolPtr(true),
+		SortAsc:       BoolPtr(true),
+		Sort:          "distance",
+		OriginType:    cacheodon.Region,
+		OriginID:      regionID,
+	}
+
+	err = runSolved(api, sheet, unfoundParams)
+	if err != nil {
+		return err
+	}
+
+	foundParams := cacheodon.SearchTerms{
+		CacheType: []cacheodon.CacheType{
+			cacheodon.Unknown,
+			cacheodon.Multi,
+			cacheodon.Letterbox,
+			cacheodon.Wherigo,
+			cacheodon.Virtual,
+		},
+		IgnorePremium: false,
+		Corrected:     BoolPtr(true),
+		HideOwned:     BoolPtr(true),
+		HideFound:     BoolPtr(false),
+		SortAsc:       BoolPtr(true),
+		Sort:          "distance",
+		OriginType:    cacheodon.Region,
+		OriginID:      regionID,
+		FoundAfter:    time.Now().AddDate(0, 0, -7).Format("2006-01-02"),
+	}
+
+	return runSolved(api, sheet, foundParams)
 }
 
 func formatCoords(lat, lon float64) string {
