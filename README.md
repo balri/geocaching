@@ -5,6 +5,12 @@ Get package:
 go get github.com/balri/cacheodon@v0.2.6
 ```
 
+# Git pre-commit hook
+To install the git pre-commit hook, run:
+```
+make setup
+```
+
 # Check vulnerabilities
 ```
 export PATH="$PATH:$(go env GOPATH)/bin"

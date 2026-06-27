@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> golangci-lint"
+golangci-lint run ./...
+
+echo "==> go test"
+go test ./...
+
+echo "==> govulncheck"
+if command -v govulncheck &>/dev/null; then
+    govulncheck ./...
+else
+    echo "WARN: govulncheck not installed — skipping (run: go install golang.org/x/vuln/cmd/govulncheck@latest)"
+fi

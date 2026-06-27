@@ -1,3 +1,4 @@
+.env
 /run.sh
 /geocaching
 geocache-service.json
