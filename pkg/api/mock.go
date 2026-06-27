@@ -37,11 +37,11 @@ func (m *mockSheet) UpdateRows(updates []sheets.RowWithIndex) error {
 func (m *mockSheet) GetExistingRows() map[string]sheets.RowWithIndex {
 	return m.ExistingRows
 }
-func (m *mockSheet) EnsureSheetExistsWithHeaderAndFilter(header []interface{}) error {
+func (m *mockSheet) EnsureSheetExistsWithHeaderAndFilter(_ []interface{}) error {
 	m.EnsureSheetExistsCalled = true
 	return nil
 }
-func (m *mockSheet) ExtendFilterToAllRows(colCount int64) error {
+func (m *mockSheet) ExtendFilterToAllRows(_ int64) error {
 	m.ExtendFilterCalled = true
 	return nil
 }

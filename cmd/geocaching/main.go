@@ -1,3 +1,4 @@
+// Package main is the entry point for the geocaching sync tool.
 package main
 
 import (

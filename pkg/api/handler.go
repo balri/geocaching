@@ -1,3 +1,4 @@
+// Package api provides the geocaching sync logic and HTTP handler utilities.
 package api
 
 import (
@@ -12,18 +13,31 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const GEOCACHE_URL_PREFIX = "https://coord.info/"
+// GeocacheURLPrefix is the base URL for geocache detail pages.
+const GeocacheURLPrefix = "https://coord.info/"
 
 const searchLat = -27.4705
 const searchLon = 153.0260
 const batchSize = 500
+const sortByDistance = "distance"
+
+const (
+	cacheTypeTraditional = "Traditional"
+	cacheTypeRegular     = "Regular"
+	cacheTypeVirtual     = "Virtual"
+	cacheFoundYes        = "Yes"
+	headerOwner          = "Owner"
+	headerNote           = "Note"
+	regionQueensland     = "Queensland"
+	originTypeQuery      = "query"
+)
 
 var (
 	// Do not rename these or a new sheet will be created
 	regions = map[string]string{
 		"52": "New South Wales",
 		"53": "Victoria",
-		"54": "Queensland",
+		"54": regionQueensland,
 		"55": "South Australia",
 		"56": "Western Australia",
 		"57": "Tasmania",
@@ -37,9 +51,9 @@ var (
 )
 
 var cacheTypes = map[cacheodon.CacheType]string{
-	cacheodon.Traditional:    "Traditional",
+	cacheodon.Traditional:    cacheTypeTraditional,
 	cacheodon.Multi:          "Multi",
-	cacheodon.Virtual:        "Virtual",
+	cacheodon.Virtual:        cacheTypeVirtual,
 	cacheodon.Letterbox:      "Letterbox",
 	cacheodon.Event:          "Event",
 	cacheodon.Unknown:        "Unknown",
@@ -61,9 +75,9 @@ var cacheTypes = map[cacheodon.CacheType]string{
 var cacheSizes = map[cacheodon.CacheSize]string{
 	cacheodon.NotChosen:   "Not chosen",
 	cacheodon.Micro:       "Micro",
-	cacheodon.Regular:     "Regular",
+	cacheodon.Regular:     cacheTypeRegular,
 	cacheodon.Large:       "Large",
-	cacheodon.VirtualSize: "Virtual",
+	cacheodon.VirtualSize: cacheTypeVirtual,
 	cacheodon.Other:       "Other",
 	cacheodon.Small:       "Small",
 }
@@ -79,9 +93,9 @@ var headerRow = []interface{}{
 	"Size",
 	"Diff",
 	"Terr",
-	"Owner",
+	headerOwner,
 	"Found",
-	"Note",
+	headerNote,
 	"Updated",
 	"Change Log",
 }
@@ -100,8 +114,8 @@ func getDefaultSearchTerms(rad int) cacheodon.SearchTerms {
 	}
 	params.ShowDisabled = BoolPtr(false)
 	params.SortAsc = BoolPtr(true)
-	params.Sort = "distance"
-	params.OriginType = "query"
+	params.Sort = sortByDistance
+	params.OriginType = originTypeQuery
 	params.HideOwned = BoolPtr(true)
 	params.NotFoundBy = []string{os.Getenv("GEOCACHING_CLIENT_ID")}
 
@@ -214,10 +228,12 @@ func runSolved(
 		}
 		cacheFound := ""
 		if cache.UserFound {
-			cacheFound = "Yes"
+			cacheFound = cacheFoundYes
 		}
-		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GEOCACHE_URL_PREFIX, cache.Code, cache.Code)
-		distance := math.Round(haversine(searchLat, searchLon, cache.UserCorrectedCoordinates.Latitude, cache.UserCorrectedCoordinates.Longitude)*100) / 100
+		link := fmt.Sprintf(`=HYPERLINK("%s%s", "%s")`, GeocacheURLPrefix, cache.Code, cache.Code)
+		corrLat := cache.UserCorrectedCoordinates.Latitude
+		corrLon := cache.UserCorrectedCoordinates.Longitude
+		distance := math.Round(haversine(searchLat, searchLon, corrLat, corrLon)*100) / 100
 
 		existing, exists := existingRows[cache.Code]
 
@@ -281,11 +297,15 @@ func runSolved(
 	}
 
 	if len(rowsToUpdate) > 0 {
-		sheet.UpdateRows(rowsToUpdate)
+		if err := sheet.UpdateRows(rowsToUpdate); err != nil {
+			log.Printf("Failed to update rows: %v", err)
+		}
 	}
 
 	if len(rowsToAppend) > 0 {
-		sheet.AppendRows(rowsToAppend.ToRows())
+		if err := sheet.AppendRows(rowsToAppend.ToRows()); err != nil {
+			log.Printf("Failed to append rows: %v", err)
+		}
 	}
 
 	err = sheet.ExtendFilterToAllRows(int64(len(headerRow)))
@@ -388,6 +408,7 @@ func rowsEqual(a, b CacheRow) (isEqual bool, changeLog []string) {
 	return isEqual, changeLog
 }
 
+// RunSolvedSyncForRegion fetches solved caches for the given region and syncs them to the spreadsheet.
 func RunSolvedSyncForRegion(regionID string) error {
 	region, ok := regions[regionID]
 	if !ok {
@@ -418,7 +439,7 @@ func RunSolvedSyncForRegion(regionID string) error {
 		HideOwned:     BoolPtr(true),
 		HideFound:     BoolPtr(true),
 		SortAsc:       BoolPtr(true),
-		Sort:          "distance",
+		Sort:          sortByDistance,
 		OriginType:    cacheodon.Region,
 		OriginID:      regionID,
 	}
@@ -441,7 +462,7 @@ func RunSolvedSyncForRegion(regionID string) error {
 		HideOwned:     BoolPtr(true),
 		HideFound:     BoolPtr(false),
 		SortAsc:       BoolPtr(true),
-		Sort:          "distance",
+		Sort:          sortByDistance,
 		OriginType:    cacheodon.Region,
 		OriginID:      regionID,
 		FoundAfter:    time.Now().AddDate(0, 0, -7).Format("2006-01-02"),

@@ -1,4 +1,5 @@
 ---
+version: "2"
 linters:
   enable:
     # Prevents against memory leaks in production caused by not closing
@@ -11,8 +12,6 @@ linters:
     # Detects unchecked errors in go programs. These unchecked errors can be
     # critical bugs in some cases.
     - errcheck
-    # Simplifies go code.
-    - gosimple
     # Reports suspicious constructs, maintained by goteam. e.g. Printf unused
     # params not caught at compile time.
     - govet
@@ -29,10 +28,6 @@ linters:
     - gocritic
     # Limits code cyclomatic complexity
     - gocyclo
-    # Detects if code needs to be gofmt'd
-    - gofmt
-    # Detects unused go package imports
-    - goimports
     # Detcts style mistakes not correctness. Golint is meant to carry out the
     # stylistic conventions put forth in Effective Go and CodeReviewComments.
     # golint has false positives and false negatives and can be tweaked.
@@ -52,43 +47,50 @@ linters:
     - staticcheck
     # Detects unused struct fields
     # - structcheck
-    # Parses and typechecks the code like the go compiler
-    - typecheck
     # Detects unused constants, variables, functions and types
     - unused
     # Remove unnecessary type conversions
     - unconvert
     # Remove unnecessary(unused) function parameters
     - unparam
-linters-settings:
-  goconst:
-    # minimal length of string constant
-    # default: 3
-    min-len: 2
-    # minimum number of occurrences of string constant
-    # default: 3
-    min-occurences: 2
+  settings:
+    goconst:
+      # minimal length of string constant
+      # default: 3
+      min-len: 2
+      # minimum number of occurrences of string constant
+      # default: 3
+      min-occurrences: 2
+  exclusions:
+    # See cmdline flag documentation for more info about default excludes
+    # --exclude-use-default. Nothing is excluded by default
+    presets: []
+    # Excluding configuration per-path, per-linter, per-text and per-source
+    rules:
+      # Exclude some linters from running on tests files.
+      # TODO: Add examples why this is good
+      - path: _test\.go
+        linters:
+          # Tests should be simple? Add example why this is good?
+          - gocyclo
+          # Error checking adds verbosity and complexity for minimal value
+          - errcheck
+          # Table test encourage duplication in defining the table tests.
+          - dupl
+          # Hard coded example tokens, SQL injection and other bad practices may
+          # want to be tested
+          - gosec
+          # Test data can long
+          - lll
+          # Repeated strings in test data (e.g. table tests) are acceptable
+          - goconst
+formatters:
+  enable:
+    # Detects if code needs to be gofmt'd
+    - gofmt
+    # Detects unused go package imports
+    - goimports
 issues:
   # Maximum count of issues with the same text. Set to 0 to disable. Default
   # is 3. We have chosen an arbitrary value that works based on practical usage.
-  max-same: 20
-  # See cmdline flag documentation for more info about default excludes
-  # --exclude-use-default. Nothing is excluded by default
-  exclude-use-default: false
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    # Exclude some linters from running on tests files.
-    # TODO: Add examples why this is good
-    - path: _test\.go
-      linters:
-        # Tests should be simple? Add example why this is good?
-        - gocyclo
-        # Error checking adds verbosity and complexity for minimal value
-        - errcheck
-        # Table test encourage duplication in defining the table tests.
-        - dupl
-        # Hard coded example tokens, SQL injection and other bad practices may
-        # want to be tested
-        - gosec
-        # Test data can long
-        - lll
+  max-same-issues: 20

@@ -1,5 +1,7 @@
+// Package sheets provides a client for reading and writing Google Sheets.
 package sheets
 
+// SheetWriter defines the interface for writing to a Google Sheet.
 type SheetWriter interface {
 	AppendRows(rows [][]interface{}) error
 	UpdateRows(rows []RowWithIndex) error
@@ -10,6 +12,7 @@ type SheetWriter interface {
 
 type colIdx int
 
+// Column index constants for the geocache spreadsheet.
 const (
 	ColumnCode            colIdx = 0
 	ColumnName            colIdx = 1

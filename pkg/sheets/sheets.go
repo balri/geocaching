@@ -12,15 +12,19 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+const fieldUserEnteredFormatNumber = "userEnteredFormat.numberFormat"
+
+// SheetClient is a client for reading and writing a specific Google Sheet.
 type SheetClient struct {
 	service       *sheets.Service
 	spreadsheetID string
 	sheetName     string
 }
 
+// NewSheetClient creates a new SheetClient authenticated with a JSON service account credentials file.
 func NewSheetClient(jsonPath, spreadsheetID, sheetName string) *SheetClient {
 	ctx := context.Background()
-	srv, err := sheets.NewService(ctx, option.WithCredentialsFile(jsonPath))
+	srv, err := sheets.NewService(ctx, option.WithAuthCredentialsFile(option.ServiceAccount, jsonPath))
 	if err != nil {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
@@ -31,6 +35,7 @@ func NewSheetClient(jsonPath, spreadsheetID, sheetName string) *SheetClient {
 	}
 }
 
+// UpdateRows updates existing rows in the sheet at their original indices.
 func (s *SheetClient) UpdateRows(updates []RowWithIndex) error {
 	ctx := context.Background()
 	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
@@ -76,6 +81,7 @@ func (s *SheetClient) UpdateRows(updates []RowWithIndex) error {
 	})
 }
 
+// AppendRows appends new rows to the end of the sheet.
 func (s *SheetClient) AppendRows(rows [][]interface{}) error {
 	ctx := context.Background()
 	return withBackoff(func() error {
@@ -88,11 +94,13 @@ func (s *SheetClient) AppendRows(rows [][]interface{}) error {
 	})
 }
 
+// RowWithIndex pairs a row's data with its 0-based sheet row index.
 type RowWithIndex struct {
 	Index int // 0-based index (0 = header, 1 = first data row)
 	Row   []interface{}
 }
 
+// GetExistingRows returns all existing data rows keyed by their cache code.
 func (s *SheetClient) GetExistingRows() map[string]RowWithIndex {
 	ctx := context.Background()
 	resp, err := s.service.Spreadsheets.Values.Get(
@@ -119,6 +127,7 @@ func (s *SheetClient) GetExistingRows() map[string]RowWithIndex {
 	return rows
 }
 
+// EnsureSheetExistsWithHeaderAndFilter creates the sheet with a header row and filter if it does not already exist.
 func (s *SheetClient) EnsureSheetExistsWithHeaderAndFilter(header []interface{}) error {
 	ctx := context.Background()
 	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
@@ -197,6 +206,7 @@ func (s *SheetClient) EnsureSheetExistsWithHeaderAndFilter(header []interface{})
 	return nil
 }
 
+// ExtendFilterToAllRows extends the sheet filter to cover all current rows and formats date columns.
 func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 	ctx := context.Background()
 	ss, err := s.service.Spreadsheets.Get(s.spreadsheetID).Context(ctx).Do()
@@ -258,7 +268,7 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 					},
 				},
 			},
-			Fields: "userEnteredFormat.numberFormat",
+			Fields: fieldUserEnteredFormatNumber,
 		},
 	}
 
@@ -279,7 +289,7 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 					},
 				},
 			},
-			Fields: "userEnteredFormat.numberFormat",
+			Fields: fieldUserEnteredFormatNumber,
 		},
 	}
 

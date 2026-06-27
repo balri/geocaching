@@ -224,7 +224,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "search error",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{}, fmt.Errorf("Search error")
 				},
 			},
@@ -233,7 +233,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "no caches found",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{}, nil
 				},
 			},
@@ -244,7 +244,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "caches found and updated",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{
 						{
 							Code:           "GC12345",
@@ -304,7 +304,11 @@ func TestRunSolved(t *testing.T) {
 						"Yes",
 						"Old Note",
 						float64(45941.24901620371), // 2025-10-11 05:58:35 in Excel date format,
-						"Name changed from 'Old Name'; Posted Coords changed from 'S27 07.000 E153 39.000'; Corrected Coords changed from 'S27 07.000 E153 39.000'; Distance changed from '0.50'; Placed Date changed from '2023-01-01'; Owner changed from 'OldOwner'; Found changed to 'Yes'",
+						"Name changed from 'Old Name'; " +
+							"Posted Coords changed from 'S27 07.000 E153 39.000'; " +
+							"Corrected Coords changed from 'S27 07.000 E153 39.000'; " +
+							"Distance changed from '0.50'; Placed Date changed from '2023-01-01'; " +
+							"Owner changed from 'OldOwner'; Found changed to 'Yes'",
 					},
 				},
 			},
@@ -312,7 +316,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "caches found and not updated",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{
 						{
 							Code:           "GC12345",
@@ -358,7 +362,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "caches found and appended",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{
 						{
 							Code:           "GC12345",
@@ -414,7 +418,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "cache with note found and appended",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{
 						{
 							Code:           "GC12345",
@@ -444,7 +448,7 @@ func TestRunSolved(t *testing.T) {
 						},
 					}, nil
 				},
-				GetCacheNoteForGeocacheFunc: func(cache cacheodon.Geocache) (string, error) {
+				GetCacheNoteForGeocacheFunc: func(_ cacheodon.Geocache) (string, error) {
 					return "ROT-47 cipher", nil
 				},
 			},
@@ -474,7 +478,7 @@ func TestRunSolved(t *testing.T) {
 		{
 			name: "caches found and not appended",
 			mockAPI: &mockGeocachingAPI{
-				SearchFunc: func(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
+				SearchFunc: func(_ cacheodon.SearchTerms) ([]cacheodon.Geocache, error) {
 					return []cacheodon.Geocache{
 						{
 							Code:           "GC12345",

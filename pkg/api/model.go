@@ -10,11 +10,13 @@ import (
 	cacheodon "github.com/balri/cacheodon/pkg/geocaching"
 )
 
+// GeocachingAPI defines the interface for interacting with the Geocaching API.
 type GeocachingAPI interface {
 	Search(terms cacheodon.SearchTerms) ([]cacheodon.Geocache, error)
 	GetCacheNoteForGeocache(cache cacheodon.Geocache) (string, error)
 }
 
+// CacheRow represents a single geocache entry as a spreadsheet row.
 type CacheRow struct {
 	Index           int
 	Code            string
@@ -34,6 +36,7 @@ type CacheRow struct {
 	ChangeLog       string
 }
 
+// CacheRows is a slice of CacheRow values.
 type CacheRows []CacheRow
 
 func rowToCacheRow(row sheets.RowWithIndex) CacheRow {
@@ -87,6 +90,7 @@ func rowsToCacheRows(rows map[string]sheets.RowWithIndex) map[string]CacheRow {
 	return cacheRows
 }
 
+// ToRow converts a CacheRow to a flat slice of cell values for appending to a sheet.
 func (c CacheRow) ToRow() []interface{} {
 	return []interface{}{
 		c.Code,
@@ -107,6 +111,7 @@ func (c CacheRow) ToRow() []interface{} {
 	}
 }
 
+// ToRowForUpdate converts a CacheRow to cell values for updating an existing sheet row.
 func (c CacheRow) ToRowForUpdate(changeLog []string) []interface{} {
 	dist, _ := strconv.ParseFloat(c.Distance, 64)
 	diff, _ := strconv.ParseFloat(c.Difficulty, 64)
@@ -143,6 +148,7 @@ func (c CacheRow) ToRowForUpdate(changeLog []string) []interface{} {
 	}
 }
 
+// ToRows converts all CacheRows to a 2D slice of cell values.
 func (cs CacheRows) ToRows() [][]interface{} {
 	rows := make([][]interface{}, len(cs))
 	for i, c := range cs {
