@@ -293,8 +293,26 @@ func (s *SheetClient) ExtendFilterToAllRows(colCount int64) error {
 		},
 	}
 
+	sortReq := &sheets.Request{
+		SortRange: &sheets.SortRangeRequest{
+			Range: &sheets.GridRange{
+				SheetId:          sheetID,
+				StartRowIndex:    1, // skip header
+				EndRowIndex:      rowCount,
+				StartColumnIndex: 0,
+				EndColumnIndex:   colCount,
+			},
+			SortSpecs: []*sheets.SortSpec{
+				{
+					DimensionIndex: int64(ColumnDateUpdated),
+					SortOrder:      "DESCENDING",
+				},
+			},
+		},
+	}
+
 	_, err = s.service.Spreadsheets.BatchUpdate(s.spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-		Requests: []*sheets.Request{filterReq, placedDateReq, updatedDateReq},
+		Requests: []*sheets.Request{filterReq, placedDateReq, updatedDateReq, sortReq},
 	}).Context(ctx).Do()
 	return err
 }
