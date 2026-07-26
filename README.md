@@ -26,5 +26,5 @@ go mody tidy
 
 # Run linting
 ```
-golangci-lint ./...
+golangci-lint run ./...
 ```
