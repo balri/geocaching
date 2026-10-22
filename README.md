@@ -21,7 +21,7 @@ govulncheck ./...
 # Update vulnerabilities
 ```
 go get -u ./...
-go mody tidy
+go mod tidy
 ```
 
 # Run linting
